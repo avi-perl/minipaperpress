@@ -6,12 +6,16 @@ interface TopBarProps {
   onTitle: (title: string) => void;
   onPrint: () => void;
   onHome: () => void;
+  onOpenMenu: () => void;
 }
 
-export function TopBar({ title, onTitle, onPrint, onHome }: TopBarProps) {
+export function TopBar({ title, onTitle, onPrint, onHome, onOpenMenu }: TopBarProps) {
   return (
     <div className="topbar">
-      <button className="home-back" onClick={onHome} title="Back to documents">
+      <button className="home-back menu-toggle" onClick={onOpenMenu} title="Open menu" aria-label="Open menu">
+        <Icon.Menu />
+      </button>
+      <button className="home-back home-back-desktop" onClick={onHome} title="Back to documents">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 12l9-9 9 9" />
           <path d="M5 10v10h14V10" />
@@ -27,7 +31,8 @@ export function TopBar({ title, onTitle, onPrint, onHome }: TopBarProps) {
       </div>
       <div className="topbar-right">
         <button className="btn btn-primary" onClick={onPrint}>
-          <Icon.Print /> Share & Print
+          <Icon.Print />
+          <span className="btn-label"> Share &amp; Print</span>
         </button>
       </div>
     </div>

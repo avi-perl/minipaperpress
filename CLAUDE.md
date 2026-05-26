@@ -45,7 +45,7 @@ refreshes on sub-paths still boot the SPA.
 - `Doc` — `{ id, title, templateId, pageW, pageH, unit, folds[], frontHtml, backHtml }`. Sizes always stored in **inches**; `unit` is display preference only.
 - `Fold` — `{ id, axis: "h"|"v", position }`. `h` = horizontal cut (constant y from top in inches); `v` = vertical (constant x from left).
 - `Store` — `{ documents: Record<id, Doc>, order: id[] }` persisted to `localStorage` under `minipaperpress-docs-v2`.
-- `Template` — preset page sizes + default folds (`biz2`, `biz3` in `templates.ts`).
+- `Template` — preset page sizes + default folds (`cc2`, `cc3`, `cc4` in `templates.ts`).
 - `Layout` — output of `computeLayout()`: best of portrait vs landscape sheet packing.
 
 ## Key modules

@@ -32,7 +32,17 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
   const [zoomMode, setZoomMode] = useState<ZoomMode>("fit");
   const [customPpi, setCustomPpi] = useState(96);
   const [autoPpi, setAutoPpi] = useState(96);
-  const ppi = zoomMode === "zoom" ? customPpi : autoPpi;
+  // On phones we force fill-width regardless of the user's chosen mode — the
+  // zoom UI is hidden there and "fit" leaves too much empty space.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const onChange = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  const effectiveMode: ZoomMode = isMobile ? "fill" : zoomMode;
+  const ppi = effectiveMode === "zoom" ? customPpi : autoPpi;
   // The hijack handlers and +/- buttons scale from the *current effective*
   // ppi, so the transition from fit/fill into zoom feels continuous. A ref
   // avoids re-binding the listeners on every ppi change.
@@ -52,21 +62,22 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
     function recompute() {
       if (!containerRef.current) return;
       const r = containerRef.current.getBoundingClientRect();
-      // Side-by-side: divide available width by 2 pages, full height per page.
-      const availW = (r.width - 100) / 2;
+      // Mobile: a single column filling the viewport width (front + back stack
+      // vertically). Desktop: two pages side-by-side with horizontal gutter.
+      const availW = isMobile ? r.width - 32 : (r.width - 100) / 2;
       const availH = r.height - 140;
       const sW = availW / pageW;
       const sH = availH / pageH;
       // Fill uses width only; fit (and the value cached for zoom-mode toggle)
       // uses both axes.
-      const p = zoomMode === "fill" ? sW : Math.min(sW, sH);
+      const p = effectiveMode === "fill" ? sW : Math.min(sW, sH);
       setAutoPpi(Math.max(MIN_PPI, Math.min(p, MAX_PPI)));
     }
     recompute();
     const ro = new ResizeObserver(recompute);
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, [pageW, pageH, zoomMode]);
+  }, [pageW, pageH, effectiveMode, isMobile]);
 
   // Hijack browser zoom while the editor is mounted: Ctrl/Cmd + wheel / = / -
   // scales only the document; Ctrl/Cmd + 0 resets to Fit. Surrounding chrome
@@ -169,13 +180,15 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
           )}
         </div>
       </div>
-      <ZoomControl
-        mode={zoomMode}
-        ppi={ppi}
-        onMode={setZoomMode}
-        onZoom={zoomTo}
-        onStep={stepZoom}
-      />
+      {!isMobile && (
+        <ZoomControl
+          mode={zoomMode}
+          ppi={ppi}
+          onMode={setZoomMode}
+          onZoom={zoomTo}
+          onStep={stepZoom}
+        />
+      )}
     </div>
   );
 }

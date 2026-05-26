@@ -3,24 +3,37 @@
 import type { Layout, Starter, Template, Unit } from "./types";
 
 // Templates carry their default fold lines too.
+// Panel size is a standard ISO/IEC 7810 ID-1 credit card: 3.375 × 2.125 in.
 export const TEMPLATES: Template[] = [
   {
-    id: "biz2",
-    name: "Two-card fold",
-    sub: "2 business cards · 1 fold",
-    w: 3.5,
-    h: 4.0,
-    folds: [{ axis: "h", position: 2.0 }],
+    id: "cc2",
+    name: "Two-panel fold",
+    sub: "2 credit cards · 1 fold",
+    w: 3.375,
+    h: 4.25,
+    folds: [{ axis: "h", position: 2.125 }],
   },
   {
-    id: "biz3",
-    name: "Three-card fold",
-    sub: "3 business cards · 2 folds",
-    w: 3.5,
-    h: 6.0,
+    id: "cc3",
+    name: "Three-panel fold",
+    sub: "3 credit cards · 2 folds",
+    w: 3.375,
+    h: 6.375,
     folds: [
-      { axis: "h", position: 2.0 },
-      { axis: "h", position: 4.0 },
+      { axis: "h", position: 2.125 },
+      { axis: "h", position: 4.25 },
+    ],
+  },
+  {
+    id: "cc4",
+    name: "Four-panel fold",
+    sub: "4 credit cards · 3 folds",
+    w: 3.375,
+    h: 8.5,
+    folds: [
+      { axis: "h", position: 2.125 },
+      { axis: "h", position: 4.25 },
+      { axis: "h", position: 6.375 },
     ],
   },
 ];
@@ -80,19 +93,19 @@ export function computeLayout(
 }
 
 // Starters: premade documents you can spin up from the home page.
-const NOTES_HTML = `
-<h1 style="text-align:center;margin:0 0 6px;letter-spacing:0.02em">Notes</h1>
-${Array.from({ length: 26 })
-  .map(() => `<hr style="border:none;border-top:1px solid #c8cacd;margin:14px 0"/>`)
-  .join("")}
-`.trim();
+// 17 lines × ~0.5 in spacing fills the 8.5 in tall four-panel sheet without
+// crowding — handwriting-comfortable on a 3.375 in wide pocket notepad.
+const NOTES_LINE_COUNT = 17;
+const NOTES_HTML = Array.from({ length: NOTES_LINE_COUNT })
+  .map(() => `<hr style="border:none;border-top:1px solid #c8cacd;margin:24px 0"/>`)
+  .join("");
 
 export const STARTERS: Starter[] = [
   {
     id: "notes",
-    name: "Notes",
-    description: "Ruled notes · 3.5 × 6 in · 2 folds",
-    templateId: "biz3",
+    name: "Pocket notepad",
+    description: "Ruled notes · 3.375 × 8.5 in · 3 folds · double-sided",
+    templateId: "cc4",
     frontHtml: NOTES_HTML,
     backHtml: NOTES_HTML,
   },

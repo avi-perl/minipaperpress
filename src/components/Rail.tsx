@@ -7,9 +7,12 @@ interface RailProps {
   project: Doc;
   update: (patch: Partial<Doc>) => void;
   updateFolds: (folds: Fold[]) => void;
+  open: boolean;
+  onClose: () => void;
+  onHome: () => void;
 }
 
-export function Rail({ project, update, updateFolds }: RailProps) {
+export function Rail({ project, update, updateFolds, open, onClose, onHome }: RailProps) {
   const { templateId, pageW, pageH, unit, folds } = project;
 
   const setTemplate = (t: Template) => {
@@ -41,7 +44,21 @@ export function Rail({ project, update, updateFolds }: RailProps) {
   const removeFold = (id: string) => updateFolds(folds.filter((f) => f.id !== id));
 
   return (
-    <div className="rail">
+    <>
+      <div className={`rail-scrim ${open ? "is-open" : ""}`} onClick={onClose} aria-hidden="true" />
+      <div className={`rail ${open ? "is-open" : ""}`}>
+        <div className="rail-mobile-head">
+          <button className="rail-mobile-home" onClick={() => { onClose(); onHome(); }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 12l9-9 9 9" />
+              <path d="M5 10v10h14V10" />
+            </svg>
+            Back to documents
+          </button>
+          <button className="rail-mobile-close" onClick={onClose} aria-label="Close menu">
+            <Icon.X />
+          </button>
+        </div>
       {/* DIMENSIONS */}
       <div className="rail-section">
         <div className="rail-h">
@@ -99,7 +116,8 @@ export function Rail({ project, update, updateFolds }: RailProps) {
           ))}
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 

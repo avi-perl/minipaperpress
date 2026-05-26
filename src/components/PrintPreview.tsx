@@ -28,6 +28,13 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
   const [flipEdge, setFlipEdge] = useState<FlipEdge>("long"); // duplex flip axis
   const [shareOpen, setShareOpen] = useState(false);
   const [pdfHintOpen, setPdfHintOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false); // mobile-only overlay
+  useEffect(() => {
+    if (!sideOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [sideOpen]);
 
   // The editor strips insignificant whitespace between blocks; the static print
   // render must do the same, or stray newlines in the stored HTML show up as
@@ -52,20 +59,28 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
     function fit() {
       if (!stageRef.current) return;
       const r = stageRef.current.getBoundingClientRect();
-      const padding = 64; // inner padding + labels + gaps
-      // Two sheets side-by-side with gap between
-      const sheetsAcross = 2;
-      const totalWIn = SHEET_W_IN * sheetsAcross + 0.6; // 0.6in gutter
+      const isMobile = window.matchMedia("(max-width: 768px)").matches;
+      const padding = isMobile ? 24 : 64;
+      // Mobile stacks the two sheets vertically; desktop puts them side-by-side.
+      const sheetsAcross = isMobile ? 1 : 2;
+      const totalWIn = SHEET_W_IN * sheetsAcross + (isMobile ? 0 : 0.6);
       const availW = r.width - padding;
       const availH = r.height - padding;
       const ppiW = availW / totalWIn;
       const ppiH = availH / SHEET_H_IN;
-      setPpi(Math.max(20, Math.min(ppiW, ppiH, 110)));
+      // On mobile, width is the binding constraint and we let users scroll
+      // vertically through both sheets.
+      const next = isMobile ? ppiW : Math.min(ppiW, ppiH);
+      setPpi(Math.max(20, Math.min(next, 110)));
     }
     fit();
     const ro = new ResizeObserver(fit);
     if (stageRef.current) ro.observe(stageRef.current);
-    return () => ro.disconnect();
+    window.addEventListener("resize", fit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", fit);
+    };
   }, []);
 
   const handlePrint = () => window.print();
@@ -91,13 +106,23 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
           </div>
         </div>
         <div className="print-topbar-r">
-          <button className="btn btn-outline" onClick={onClose}>Back to editor</button>
+          <button className="btn btn-outline btn-back-mobile-hide" onClick={onClose}>Back to editor</button>
+          <button className="home-back menu-toggle" onClick={() => setSideOpen(true)} title="Print options" aria-label="Print options">
+            <Icon.Menu />
+          </button>
         </div>
       </div>
 
       <div className="print-body">
+        <div className={`rail-scrim ${sideOpen ? "is-open" : ""}`} onClick={() => setSideOpen(false)} aria-hidden="true" />
         {/* Side options */}
-        <div className="print-side no-print">
+        <div className={`print-side no-print ${sideOpen ? "is-open" : ""}`}>
+          <div className="rail-mobile-head">
+            <span style={{ fontSize: 14, fontWeight: 500 }}>Print options</span>
+            <button className="rail-mobile-close" onClick={() => setSideOpen(false)} aria-label="Close">
+              <Icon.X />
+            </button>
+          </div>
           <div className="rail-h" style={{ marginTop: 0 }}>Actions</div>
           <div className="action-list">
             <ActionButton icon={<Icon.Print />} title="Print" subtitle="Two-sided · Margins: None · 100%" primary onClick={handlePrint} />

@@ -1184,6 +1184,180 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   margin: 4px 0;
 }
 
+/* Mobile-only chrome inside the rail/print-side overlays. Hidden by default;
+   the mobile breakpoint reveals them and turns the rail into a slide-in panel. */
+.menu-toggle { display: none; }
+.rail-mobile-head { display: none; }
+.rail-scrim { display: none; }
+.btn .btn-label { display: inline; }
+
+/* ---------- Mobile (≤ 768px) ---------- */
+@media (max-width: 768px) {
+  /* On mobile we drop the grid: topbar and toolbar are fixed (so they can
+     animate independently and overlay the canvas), and the workspace fills
+     the viewport with padding-top reserving room for the chrome. The grid
+     would collapse the workspace into row 1 (0px) the moment we pulled
+     siblings out of flow. */
+  .app {
+    display: block;
+    position: relative;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .workspace {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: block;
+  }
+  .topbar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 25;
+    padding: 6px 10px;
+    gap: 8px;
+    box-shadow: var(--shadow-1);
+    transition: transform .2s ease;
+  }
+  .app.topbar-hidden .topbar { transform: translateY(-100%); }
+  /* Toolbar sits below the topbar; translate it past both heights so it leaves
+     the viewport entirely instead of stalling halfway up. */
+  .app.topbar-hidden .toolbar { transform: translateY(-120px); }
+  .toolbar {
+    position: fixed;
+    top: 56px; left: 0; right: 0;
+    z-index: 24;
+    transition: transform .2s ease;
+  }
+  .toolbar-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 4px 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .toolbar-row::-webkit-scrollbar { display: none; }
+  .canvas-area {
+    height: 100%;
+    padding-top: 96px;
+  }
+  /* Hide desktop chrome that doesn't fit. */
+  .home-back-desktop { display: none; }
+  .menu-toggle { display: grid; place-items: center; }
+  .title-block .doc-title {
+    font-size: 15px;
+    max-width: none;
+  }
+  .btn .btn-label { display: none; }
+  .btn-primary {
+    padding: 8px 12px;
+  }
+
+  /* Rail is a left slide-in panel covering the whole screen. */
+  .rail {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    border-right: none;
+    overflow-y: auto;
+  }
+  .rail.is-open { transform: translateX(0); }
+  .rail-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(32, 33, 36, 0.4);
+    z-index: 49;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .rail-scrim.is-open { opacity: 1; pointer-events: auto; }
+  .rail-mobile-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-soft);
+    position: sticky; top: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+  .rail-mobile-home {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--ink-2);
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+  .rail-mobile-home:hover { background: var(--hover); }
+  .rail-mobile-close {
+    width: 32px; height: 32px;
+    display: grid; place-items: center;
+    border-radius: 50%;
+    color: var(--ink-3);
+  }
+  .rail-mobile-close:hover { background: var(--hover); color: var(--ink); }
+
+  /* Canvas: page fills viewport width, no zoom UI. */
+  .canvas-area { padding-bottom: 40px; }
+  .canvas-inner { padding-top: 14px; gap: 28px; }
+  .page-stack { gap: 28px; }
+  .zoom-control { display: none; }
+
+  /* Home page — tighter padding for narrow screens. */
+  .home-scroll { padding: 20px 16px 40px; }
+  .home-topbar { padding: 6px 14px; }
+  .doc-grid, .home-new-row, .starter-row {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+  .doc-card-thumb, .new-card-thumb { height: 180px; }
+  .starter-thumb { height: 160px; }
+  /* On touch, the menu can't rely on hover — always show it. */
+  .doc-card-menu { display: flex; }
+
+  /* Print preview — side panel becomes a slide-in overlay; sheets stack. */
+  .print-page {
+    grid-template-rows: 56px 1fr;
+  }
+  .print-topbar { padding: 0 10px; gap: 8px; }
+  .modal-title { font-size: 14px; }
+  .modal-sub { font-size: 11px; }
+  .btn-back-mobile-hide { display: none; }
+  .print-body {
+    display: block;
+    position: relative;
+  }
+  .print-side {
+    position: fixed;
+    top: 0; right: 0; bottom: 0;
+    width: min(360px, 100vw);
+    max-width: 100vw;
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform .22s ease;
+    border-right: none;
+    border-left: 1px solid var(--border-soft);
+    background: var(--surface);
+  }
+  .print-side.is-open { transform: translateX(0); }
+  .print-stage {
+    padding: 12px;
+    height: calc(100vh - 56px);
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+  .sheets-row {
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    align-items: center;
+  }
+}
+
 /* ---------- @media print ---------- */
 /* Each sheet prints as exactly one Letter page. Nothing else prints, and the
    sheet is clipped to 8.5x11in so content can never spill onto extra pages. */

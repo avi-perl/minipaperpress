@@ -39,7 +39,7 @@ export function HomePage({ store, onOpen, onCreate, onDelete }: HomePageProps) {
             </span>
           </div>
           <div className="doc-grid">
-            <NewCard label="Blank document" onClick={() => onCreate({ templateId: "biz2" })} />
+            <NewCard label="Blank document" onClick={() => onCreate({ templateId: "cc2" })} />
             {docs.map((d) => (
               <DocCard key={d.id} doc={d} onOpen={() => onOpen(d.id)} onDelete={() => onDelete(d.id)} />
             ))}
