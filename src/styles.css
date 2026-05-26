@@ -719,6 +719,9 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   min-height: 0;
   height: 100%;
 }
+/* Mobile-only row of primary actions pinned above the preview. Hidden on
+   desktop where the full side panel is always visible. */
+.print-actions-mobile { display: none; }
 .print-side {
   border-right: 1px solid var(--border-soft);
   padding: 18px;
@@ -1216,17 +1219,11 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     padding: 6px 10px;
     gap: 8px;
     box-shadow: var(--shadow-1);
-    transition: transform .2s ease;
   }
-  .app.topbar-hidden .topbar { transform: translateY(-100%); }
-  /* Toolbar sits below the topbar; translate it past both heights so it leaves
-     the viewport entirely instead of stalling halfway up. */
-  .app.topbar-hidden .toolbar { transform: translateY(-120px); }
   .toolbar {
     position: fixed;
     top: 56px; left: 0; right: 0;
     z-index: 24;
-    transition: transform .2s ease;
   }
   .toolbar-row {
     flex-wrap: nowrap;
@@ -1344,12 +1341,47 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
     background: var(--surface);
   }
   .print-side.is-open { transform: translateX(0); }
+  /* Stage height subtracts the topbar (56px) AND the action bar (52px) so
+     vertical scrolling stays inside the stage, not the whole page. */
   .print-stage {
     padding: 12px;
-    height: calc(100vh - 56px);
+    height: calc(100vh - 56px - 52px);
     align-items: flex-start;
     justify-content: flex-start;
   }
+  .print-actions-mobile {
+    display: flex;
+    gap: 8px;
+    padding: 8px 10px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border-soft);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .print-actions-mobile::-webkit-scrollbar { display: none; }
+  .pam-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: #fff;
+    color: var(--ink-2);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .pam-btn:hover { background: var(--hover); }
+  .pam-btn.primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: transparent;
+  }
+  .pam-btn.primary:hover { background: #1967d2; }
   .sheets-row {
     flex-direction: column;
     gap: 16px;

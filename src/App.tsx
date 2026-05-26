@@ -31,10 +31,6 @@ export default function App() {
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   const [selectedFoldId, setSelectedFoldId] = useState<string | null>(null);
   const [railOpen, setRailOpen] = useState(false);
-  // Mobile-only: hide top bar on scroll-down, show on scroll-up. Always true at
-  // viewport top so users see chrome before they scroll. The Canvas owns the
-  // scrolling container; we find it by class.
-  const [topBarHidden, setTopBarHidden] = useState(false);
 
   // Persist store on change (the dev sample document is never written to storage)
   useEffect(() => {
@@ -70,32 +66,6 @@ export default function App() {
   useEffect(() => {
     if (route.kind !== "editor") setRailOpen(false);
   }, [route]);
-
-  // Auto-hide the top bar based on scroll direction inside the canvas-area.
-  // Only relevant on mobile (CSS pins the bar fixed there), but the listener
-  // is harmless on desktop.
-  useEffect(() => {
-    if (route.kind !== "editor") return;
-    const el = document.querySelector(".canvas-area") as HTMLElement | null;
-    if (!el) return;
-    let lastY = el.scrollTop;
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const y = el.scrollTop;
-        const dy = y - lastY;
-        if (y < 24) setTopBarHidden(false);
-        else if (dy > 6) setTopBarHidden(true);
-        else if (dy < -6) setTopBarHidden(false);
-        lastY = y;
-        ticking = false;
-      });
-    };
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => el.removeEventListener("scroll", onScroll);
-  }, [route, printOpen]);
 
   // Lock body scroll while the rail overlay is open on mobile.
   useEffect(() => {
@@ -182,7 +152,7 @@ export default function App() {
     return <PrintPreview project={project} onClose={() => setPrintOpen(false)} />;
   }
   return (
-    <div className={`app ${topBarHidden ? "topbar-hidden" : ""}`}>
+    <div className="app">
       <TopBar
         title={project.title}
         onTitle={(t) => update({ title: t })}

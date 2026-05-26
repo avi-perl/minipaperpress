@@ -114,6 +114,29 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
       </div>
 
       <div className="print-body">
+        {/* Mobile-only: surface the primary actions above the preview so they're
+            one tap away. Advanced options still live in the slide-in side panel. */}
+        <div className="print-actions-mobile no-print">
+          <button className="pam-btn primary" onClick={handlePrint}>
+            <Icon.Print />
+            <span>Print</span>
+          </button>
+          <button className="pam-btn" onClick={handleSavePdf}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <path d="M14 2v6h6" />
+            </svg>
+            <span>PDF</span>
+          </button>
+          <button className="pam-btn" onClick={() => setShareOpen(true)}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span>Share</span>
+          </button>
+        </div>
         <div className={`rail-scrim ${sideOpen ? "is-open" : ""}`} onClick={() => setSideOpen(false)} aria-hidden="true" />
         {/* Side options */}
         <div className={`print-side no-print ${sideOpen ? "is-open" : ""}`}>
