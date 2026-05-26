@@ -5,6 +5,7 @@ import type { Editor } from "@tiptap/react";
 import type { Doc, Fold, Starter, Store } from "./lib/types";
 import { loadStore, newDocFromTemplate, saveStore, updateDoc, deleteDoc } from "./lib/storage";
 import { templateById } from "./lib/templates";
+import { withDevDoc, stripDevDoc } from "./lib/devDoc";
 import { HomePage } from "./components/HomePage";
 import { TopBar } from "./components/TopBar";
 import { Toolbar } from "./components/Toolbar";
@@ -20,15 +21,15 @@ interface CreateArg {
 }
 
 export default function App() {
-  const [store, setStore] = useState<Store>(loadStore);
+  const [store, setStore] = useState<Store>(() => withDevDoc(loadStore()));
   const [activeId, setActiveId] = useState<string | null>(null);
   const [route, setRoute] = useState<Route>("home");
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   const [selectedFoldId, setSelectedFoldId] = useState<string | null>(null);
 
-  // Persist store on change
+  // Persist store on change (the dev sample document is never written to storage)
   useEffect(() => {
-    saveStore(store);
+    saveStore(stripDevDoc(store));
   }, [store]);
 
   const project = activeId ? store.documents[activeId] : null;
