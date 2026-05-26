@@ -2,10 +2,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Doc, Fold, Layout } from "../lib/types";
 import { computeLayout, fmt, round2 } from "../lib/templates";
+import { normalizeCardHtml } from "../lib/cardHtml";
+import { buildShareHtml, shareFilename } from "../lib/shareFile";
 import { Icon } from "./icons";
 
 const SHEET_W_IN = 8.5;
 const SHEET_H_IN = 11;
+
+// Which physical edge the duplex flip happens on (matches the printer's
+// "print on both sides" setting). It decides how the back is mirrored so each
+// back card lands exactly behind its front card.
+type FlipEdge = "long" | "short";
 
 interface PrintPreviewProps {
   project: Doc;
@@ -13,14 +20,25 @@ interface PrintPreviewProps {
 }
 
 export function PrintPreview({ project, onClose }: PrintPreviewProps) {
-  const { pageW, pageH, folds, unit } = project;
+  const { pageW, pageH, folds, unit, frontHtml, backHtml } = project;
   const [margin, setMargin] = useState(0.25); // inches
   const [gap, setGap] = useState(0.15);
   const [showFoldArrows, setShowFoldArrows] = useState(true);
   const [showCutBorder, setShowCutBorder] = useState(true);
+  const [flipEdge, setFlipEdge] = useState<FlipEdge>("long"); // duplex flip axis
   const [shareOpen, setShareOpen] = useState(false);
   const [pdfHintOpen, setPdfHintOpen] = useState(false);
 
+  // The editor strips insignificant whitespace between blocks; the static print
+  // render must do the same, or stray newlines in the stored HTML show up as
+  // blank lines and the spacing no longer matches the editor.
+  const frontHtmlNorm = useMemo(() => normalizeCardHtml(frontHtml), [frontHtml]);
+  const backHtmlNorm = useMemo(() => normalizeCardHtml(backHtml), [backHtml]);
+
+  // Print boundary = the chosen page size. Content past pageH is hard-clipped
+  // here so the user sees exactly what will print. The editor's overflow marker
+  // + warning bar already tell them content is being lost, so we don't need to
+  // visualize it again on the sheet.
   const layout = useMemo(
     () => computeLayout(pageW, pageH, SHEET_W_IN, SHEET_H_IN, margin, gap),
     [pageW, pageH, margin, gap],
@@ -82,6 +100,7 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
         <div className="print-side no-print">
           <div className="rail-h" style={{ marginTop: 0 }}>Actions</div>
           <div className="action-list">
+            <ActionButton icon={<Icon.Print />} title="Print" subtitle="Two-sided · Margins: None · 100%" primary onClick={handlePrint} />
             <ActionButton
               icon={
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -92,22 +111,19 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
                 </svg>
               }
               title="Save as PDF"
-              subtitle="Choose ‘Save as PDF’ in the dialog"
+              subtitle="Margins: None · Scale: 100%"
               onClick={handleSavePdf}
             />
-            <ActionButton icon={<Icon.Print />} title="Print" subtitle="Send to your printer" primary onClick={handlePrint} />
             <ActionButton
               icon={
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="18" cy="5" r="3" />
-                  <circle cx="6" cy="12" r="3" />
-                  <circle cx="18" cy="19" r="3" />
-                  <line x1="8.6" y1="13.5" x2="15.4" y2="17.5" />
-                  <line x1="15.4" y1="6.5" x2="8.6" y2="10.5" />
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
               }
-              title="Share for editing"
-              subtitle="Invite someone with a link"
+              title="Share a copy"
+              subtitle="Download a file someone else can open"
               onClick={() => setShareOpen(true)}
             />
           </div>
@@ -139,6 +155,22 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
           <ToggleRow label="Cut border" checked={showCutBorder} onChange={setShowCutBorder} />
           <ToggleRow label="Fold arrows" checked={showFoldArrows} onChange={setShowFoldArrows} />
 
+          <div className="rail-h">Duplex</div>
+          <div className="opt-row">
+            <span>Back flips on</span>
+            <span className="unit-toggle">
+              <button className={flipEdge === "long" ? "active" : ""} onClick={() => setFlipEdge("long")}>
+                Long edge
+              </button>
+              <button className={flipEdge === "short" ? "active" : ""} onClick={() => setFlipEdge("short")}>
+                Short edge
+              </button>
+            </span>
+          </div>
+          <div className="empty-hint" style={{ paddingTop: 0 }}>
+            Match this to your printer’s two-sided setting so the back lines up behind the front.
+          </div>
+
           {layout.count === 0 && (
             <div className="empty-hint">
               Card too large for the chosen margins. Reduce margin or pick a smaller template.
@@ -149,8 +181,8 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
         {/* Stage */}
         <div className="print-stage" ref={stageRef}>
           <div className="sheets-row">
-            <SheetCol label="Front" side="front" project={project} layout={layout} ppi={ppi} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
-            <SheetCol label="Back" side="back" project={project} layout={layout} ppi={ppi} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
+            <SheetCol label="Front" side="front" project={project} html={frontHtmlNorm} layout={layout} ppi={ppi} flipEdge={flipEdge} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
+            <SheetCol label="Back" side="back" project={project} html={backHtmlNorm} layout={layout} ppi={ppi} flipEdge={flipEdge} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
           </div>
         </div>
       </div>
@@ -158,7 +190,9 @@ export function PrintPreview({ project, onClose }: PrintPreviewProps) {
       {shareOpen && <ShareDialog project={project} onClose={() => setShareOpen(false)} />}
       {pdfHintOpen && (
         <div className="pdf-hint no-print">
-          In the dialog that opens, choose <b>Save as PDF</b> as the destination.
+          In the print dialog: set <b>Destination → Save as PDF</b>, <b>Margins → None</b>,{" "}
+          <b>Scale → 100%</b>, and turn on <b>Background graphics</b> so colors and
+          highlights match this preview.
         </div>
       )}
     </div>
@@ -191,23 +225,14 @@ interface ShareDialogProps {
 }
 
 function ShareDialog({ project, onClose }: ShareDialogProps) {
-  const link = `https://minipaperpress.app/d/${project.id}`;
-  const [copied, setCopied] = useState(false);
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch (e) {
-      /* ignore */
-    }
-  };
-  const downloadJson = () => {
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+  const origin = window.location.origin;
+  const downloadHtml = () => {
+    const html = buildShareHtml(project, origin);
+    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = (project.title || "document").replace(/[^a-z0-9-_]+/gi, "_") + ".ppfile.json";
+    a.download = shareFilename(project.title);
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -221,24 +246,16 @@ function ShareDialog({ project, onClose }: ShareDialogProps) {
           <button className="modal-close" onClick={onClose}><Icon.X /></button>
         </div>
         <div className="share-section">
-          <div className="share-section-h">Anyone with the link can edit</div>
-          <div className="share-link-row">
-            <input className="share-link" readOnly value={link} onFocus={(e) => e.target.select()} />
-            <button className="btn btn-primary" onClick={copyLink}>
-              {copied ? "Copied" : "Copy link"}
-            </button>
-          </div>
-        </div>
-        <div className="share-section">
-          <div className="share-section-h">Or send a file</div>
-          <p className="share-p">Download a copy that someone else can open in MiniPaperPress.</p>
-          <button className="btn btn-outline" onClick={downloadJson}>
+          <p className="share-p">
+            Download a small HTML file that opens this document in MiniPaperPress at <code>{origin}</code>.
+          </p>
+          <button className="btn btn-primary" onClick={downloadHtml}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Download .ppfile
+            Download .html
           </button>
         </div>
       </div>
@@ -293,17 +310,24 @@ interface SheetColProps {
   label: string;
   side: Side;
   project: Doc;
+  html: string; // normalized card HTML for this side
   layout: Layout;
   ppi: number;
+  cardH: number; // effective card height in inches (grows to fit content)
+  flipEdge: FlipEdge;
   showCutBorder: boolean;
   showFoldArrows: boolean;
 }
 
-function SheetCol({ label, side, project, layout, ppi, showCutBorder, showFoldArrows }: SheetColProps) {
+function SheetCol({ label, side, project, html, layout, ppi, cardH, flipEdge, showCutBorder, showFoldArrows }: SheetColProps) {
+  const subLabel =
+    side === "back"
+      ? `Back · mirrored (${flipEdge === "long" ? "long-edge" : "short-edge"} flip)`
+      : `${label} · 8.5 × 11 in`;
   return (
     <div className="sheet-col">
-      <div className="sheet-label">{label} · 8.5 × 11 in</div>
-      <Sheet side={side} project={project} layout={layout} ppi={ppi} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
+      <div className="sheet-label">{subLabel}</div>
+      <Sheet side={side} project={project} html={html} layout={layout} ppi={ppi} cardH={cardH} flipEdge={flipEdge} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
     </div>
   );
 }
@@ -311,15 +335,17 @@ function SheetCol({ label, side, project, layout, ppi, showCutBorder, showFoldAr
 interface SheetProps {
   side: Side;
   project: Doc;
+  html: string; // normalized card HTML for this side
   layout: Layout;
   ppi: number;
+  cardH: number; // effective card height in inches (grows to fit content)
+  flipEdge: FlipEdge;
   showCutBorder: boolean;
   showFoldArrows: boolean;
 }
 
-function Sheet({ side, project, layout, ppi, showCutBorder, showFoldArrows }: SheetProps) {
-  const { pageW, pageH, folds, frontHtml, backHtml } = project;
-  const html = side === "front" ? frontHtml : backHtml;
+function Sheet({ side, project, html, layout, ppi, cardH, flipEdge, showCutBorder, showFoldArrows }: SheetProps) {
+  const { pageW, pageH, folds } = project;
 
   if (layout.count === 0) {
     return (
@@ -334,10 +360,20 @@ function Sheet({ side, project, layout, ppi, showCutBorder, showFoldArrows }: Sh
   const cells: React.ReactNode[] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      // For the back, mirror columns horizontally so duplex flip-on-long-edge aligns.
-      const xCard = side === "back" ? cols - 1 - c : c;
-      const xIn = offsetX + xCard * (effectiveW + gap);
-      const yIn = offsetY + r * (effectiveH + gap);
+      // The back is the front mirrored across the duplex flip axis, so every
+      // back card lands exactly behind its front card once the sheet is turned
+      // over. Because the grid is centered, mirroring the grid index is the
+      // exact geometric mirror of the card's position on the sheet.
+      //  - long-edge flip  → mirror left/right (columns)
+      //  - short-edge flip → mirror top/bottom (rows)
+      let vc = c;
+      let vr = r;
+      if (side === "back") {
+        if (flipEdge === "long") vc = cols - 1 - c;
+        else vr = rows - 1 - r;
+      }
+      const xIn = offsetX + vc * (effectiveW + gap);
+      const yIn = offsetY + vr * (effectiveH + gap);
       cells.push(
         <SheetCell
           key={`${r}-${c}`}
@@ -348,15 +384,16 @@ function Sheet({ side, project, layout, ppi, showCutBorder, showFoldArrows }: Sh
           hIn={effectiveH}
           pageW={pageW}
           pageH={pageH}
+          cardH={cardH}
           folds={folds}
           html={html}
           showCutBorder={showCutBorder}
           showFoldArrows={showFoldArrows}
           neighbors={{
-            left: xCard > 0,
-            right: xCard < cols - 1,
-            top: r > 0,
-            bottom: r < rows - 1,
+            left: vc > 0,
+            right: vc < cols - 1,
+            top: vr > 0,
+            bottom: vr < rows - 1,
           }}
         />,
       );
@@ -384,7 +421,8 @@ interface SheetCellProps {
   wIn: number;
   hIn: number;
   pageW: number;
-  pageH: number;
+  pageH: number; // chosen page height in inches (the print boundary)
+  cardH: number; // effective card height in inches (grows to fit content)
   folds: Fold[];
   html: string;
   showCutBorder: boolean;
@@ -392,7 +430,7 @@ interface SheetCellProps {
   neighbors: Neighbors;
 }
 
-function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, folds, html, showCutBorder, showFoldArrows, neighbors }: SheetCellProps) {
+function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, cardH, folds, html, showCutBorder, showFoldArrows, neighbors }: SheetCellProps) {
   // All measurements stay in inches; converted to display px via `--ppi`.
   const px = (inches: number) => `calc(${inches} * var(--ppi) * 1px)`;
 
@@ -411,7 +449,7 @@ function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, folds, html, sho
   // to fit the current --ppi. This makes editor preview and actual print pixel-identical.
   const NATURAL = 96;
   const cardNatW = pageW * NATURAL;
-  const cardNatH = pageH * NATURAL;
+  const cardNatH = cardH * NATURAL;
   const SCALE = "var(--ppi-scale)";
   // Anchor card top-left to cell top-left, then scale (and optionally rotate) from there.
   const cardFrame: React.CSSProperties = {
@@ -431,9 +469,15 @@ function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, folds, html, sho
     <div style={cellStyle}>
       <div style={cardFrame}>
         <div className="editable card-readonly" dangerouslySetInnerHTML={{ __html: html || "" }} />
+        {cardH > pageH && (
+          <div
+            className="overflow-marker no-print"
+            style={{ top: pageH * NATURAL, height: (cardH - pageH) * NATURAL }}
+          />
+        )}
         {showFoldArrows &&
           folds.map((f) => (
-            <FoldArrowPair key={"a-" + f.id} fold={f} cardW={pageW} cardH={pageH} natural={NATURAL} rotated={rotated} neighbors={neighbors} />
+            <FoldArrowPair key={"a-" + f.id} fold={f} cardW={pageW} cardH={cardH} natural={NATURAL} rotated={rotated} neighbors={neighbors} />
           ))}
       </div>
     </div>

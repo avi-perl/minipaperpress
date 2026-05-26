@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import type { Doc, Starter, Store, Template } from "../lib/types";
 import { STARTERS, fmt, templateById } from "../lib/templates";
+import { normalizeCardHtml } from "../lib/cardHtml";
 import { Icon } from "./icons";
 
 interface CreateArg {
@@ -121,50 +122,55 @@ interface DocThumbProps {
 }
 
 function DocThumb({ doc }: DocThumbProps) {
-  // Render a tiny preview of the FRONT side, scaled to fit the thumb.
+  // The thumbnail is a true scaled-down view of the front card — same .editable
+  // styling, same normalized HTML, same 96px natural canvas — so fonts and
+  // spacing match the editor and print exactly, just shrunk to fit.
   const maxW = 168;
   const maxH = 200;
   const ratio = doc.pageW / doc.pageH;
-  let w: number;
-  let h: number;
-  if (ratio >= maxW / maxH) {
-    w = maxW;
-    h = maxW / ratio;
-  } else {
-    h = maxH;
-    w = maxH * ratio;
-  }
+  const w = ratio >= maxW / maxH ? maxW : maxH * ratio;
+  const h = ratio >= maxW / maxH ? maxW / ratio : maxH;
+  const natW = doc.pageW * 96;
+  const natH = doc.pageH * 96;
+  const scale = w / natW;
+  const isEmpty = !doc.frontHtml || doc.frontHtml.replace(/<[^>]+>/g, "").trim() === "";
+  const normalized = useMemo(() => normalizeCardHtml(doc.frontHtml || ""), [doc.frontHtml]);
+
   return (
-    <div className="doc-thumb-page" style={{ width: w, height: h, position: "relative" }}>
+    <div className="doc-thumb-page" style={{ width: w, height: h, position: "relative", overflow: "hidden" }}>
       <div
-        className="doc-thumb-content"
         style={{
           position: "absolute",
-          inset: 0,
-          fontSize: Math.max(4, Math.round(w / 22)),
-          padding: 6,
-          overflow: "hidden",
+          top: 0,
+          left: 0,
+          width: natW,
+          height: natH,
+          background: "#fff",
+          transform: `scale(${scale})`,
+          transformOrigin: "top left",
         }}
-        dangerouslySetInnerHTML={{ __html: doc.frontHtml || "" }}
-      />
-      {(doc.folds || []).map((f, i) => {
-        const isH = f.axis === "h";
-        const pct = isH ? (f.position / doc.pageH) * 100 : (f.position / doc.pageW) * 100;
-        return (
-          <span
-            key={i}
-            style={{
-              position: "absolute",
-              ...(isH
-                ? { left: 0, right: 0, top: `${pct}%`, borderTop: "1px dashed #d0d2d6" }
-                : { top: 0, bottom: 0, left: `${pct}%`, borderLeft: "1px dashed #d0d2d6" }),
-            }}
-          />
-        );
-      })}
-      {(!doc.frontHtml || doc.frontHtml.replace(/<[^>]+>/g, "").trim() === "") && (
-        <div className="doc-thumb-empty">Empty</div>
-      )}
+      >
+        <div
+          className="editable card-readonly"
+          style={{ position: "absolute", inset: 0 }}
+          dangerouslySetInnerHTML={{ __html: normalized }}
+        />
+        {(doc.folds || []).map((f) => {
+          const isH = f.axis === "h";
+          return (
+            <span
+              key={f.id}
+              style={{
+                position: "absolute",
+                ...(isH
+                  ? { left: 0, right: 0, top: f.position * 96, borderTop: "1px dashed #d0d2d6" }
+                  : { top: 0, bottom: 0, left: f.position * 96, borderLeft: "1px dashed #d0d2d6" }),
+              }}
+            />
+          );
+        })}
+      </div>
+      {isEmpty && <div className="doc-thumb-empty">Empty</div>}
     </div>
   );
 }
@@ -179,44 +185,49 @@ function StarterCard({ starter, onClick }: StarterCardProps) {
   const maxW = 160;
   const maxH = 180;
   const ratio = t.w / t.h;
-  let w: number;
-  let h: number;
-  if (ratio >= maxW / maxH) {
-    w = maxW;
-    h = maxW / ratio;
-  } else {
-    h = maxH;
-    w = maxH * ratio;
-  }
+  const w = ratio >= maxW / maxH ? maxW : maxH * ratio;
+  const h = ratio >= maxW / maxH ? maxW / ratio : maxH;
+  const natW = t.w * 96;
+  const natH = t.h * 96;
+  const scale = w / natW;
+  const normalized = useMemo(() => normalizeCardHtml(starter.frontHtml || ""), [starter.frontHtml]);
+
   return (
     <button className="starter-card" onClick={onClick}>
       <div className="starter-thumb">
-        <div className="starter-thumb-page" style={{ width: w, height: h, position: "relative" }}>
+        <div className="starter-thumb-page" style={{ width: w, height: h, position: "relative", overflow: "hidden" }}>
           <div
             style={{
               position: "absolute",
-              inset: 0,
-              padding: 5,
-              fontSize: Math.max(4, Math.round(w / 22)),
-              overflow: "hidden",
+              top: 0,
+              left: 0,
+              width: natW,
+              height: natH,
+              background: "#fff",
+              transform: `scale(${scale})`,
+              transformOrigin: "top left",
             }}
-            dangerouslySetInnerHTML={{ __html: starter.frontHtml || "" }}
-          />
-          {(t.folds || []).map((f, i) => {
-            const isH = f.axis === "h";
-            const pct = isH ? (f.position / t.h) * 100 : (f.position / t.w) * 100;
-            return (
-              <span
-                key={i}
-                style={{
-                  position: "absolute",
-                  ...(isH
-                    ? { left: 0, right: 0, top: `${pct}%`, borderTop: "1px dashed #d0d2d6" }
-                    : { top: 0, bottom: 0, left: `${pct}%`, borderLeft: "1px dashed #d0d2d6" }),
-                }}
-              />
-            );
-          })}
+          >
+            <div
+              className="editable card-readonly"
+              style={{ position: "absolute", inset: 0 }}
+              dangerouslySetInnerHTML={{ __html: normalized }}
+            />
+            {(t.folds || []).map((f, i) => {
+              const isH = f.axis === "h";
+              return (
+                <span
+                  key={i}
+                  style={{
+                    position: "absolute",
+                    ...(isH
+                      ? { left: 0, right: 0, top: f.position * 96, borderTop: "1px dashed #d0d2d6" }
+                      : { top: 0, bottom: 0, left: f.position * 96, borderLeft: "1px dashed #d0d2d6" }),
+                  }}
+                />
+              );
+            })}
+          </div>
         </div>
       </div>
       <div className="starter-meta">

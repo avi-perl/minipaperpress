@@ -126,3 +126,17 @@ export function deleteDoc(store: Store, id: string): Store {
   const { [id]: _removed, ...rest } = store.documents;
   return { documents: rest, order: store.order.filter((x) => x !== id) };
 }
+
+// Add an incoming document (e.g. from a shared file). If the id already exists
+// in the store, mint a new one so the existing document isn't overwritten.
+export function importIncomingDoc(store: Store, incoming: Doc): { store: Store; id: string } {
+  const targetId = store.documents[incoming.id] ? uid() : incoming.id;
+  const doc: Doc = { ...incoming, id: targetId, updatedAt: Date.now() };
+  return {
+    store: {
+      documents: { ...store.documents, [targetId]: doc },
+      order: [targetId, ...store.order.filter((x) => x !== targetId)],
+    },
+    id: targetId,
+  };
+}

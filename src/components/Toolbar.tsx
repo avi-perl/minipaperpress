@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "./icons";
+import { FontDropdown } from "./FontDropdown";
 
 interface ToolbarProps {
   editor: Editor | null;
@@ -27,16 +28,6 @@ function useEditorRev(editor: Editor | null) {
     };
   }, [editor]);
 }
-
-const FONT_FAMILIES = [
-  { label: "Default", value: "" },
-  { label: "Roboto", value: "Roboto, sans-serif" },
-  { label: "Roboto Mono", value: "'Roboto Mono', monospace" },
-  { label: "Georgia", value: "Georgia, serif" },
-  { label: "Courier", value: "'Courier New', monospace" },
-  { label: "Arial", value: "Arial, sans-serif" },
-  { label: "Times", value: "'Times New Roman', serif" },
-];
 
 const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 64];
 
@@ -113,11 +104,7 @@ export function Toolbar({ editor: rawEditor }: ToolbarProps) {
         </div>
         <div className="tb-sep" />
         <div className="tb-group">
-          <select className="tb-select" style={{ width: 112 }} value={currentFontFamily} disabled={disabled} onChange={(e) => setFontFamily(e.target.value)}>
-            {FONT_FAMILIES.map((f) => (
-              <option key={f.label} value={f.value}>{f.label}</option>
-            ))}
-          </select>
+          <FontDropdown value={currentFontFamily} disabled={disabled} onChange={setFontFamily} />
           <select className="tb-select" style={{ width: 62 }} value={currentFontSizeNum} disabled={disabled} onChange={(e) => setFontSize(e.target.value)}>
             <option value="">Auto</option>
             {FONT_SIZES.map((s) => (

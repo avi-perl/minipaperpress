@@ -1,9 +1,13 @@
-// Main app. Routes between Home, Editor, and Print Preview.
-// Storage holds many documents in one keyed store (lib/storage.ts).
+// Main app. URL-driven routing:
+//   /        → Home
+//   /e/<id>  → Editor for that document
+// Print preview is an in-page sub-state of the editor (it doesn't add to history).
+// Incoming shared files land at /#doc=<base64url>, which is imported on startup
+// and replaced with /e/<id>.
 import { useEffect, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import type { Doc, Fold, Starter, Store } from "./lib/types";
-import { loadStore, newDocFromTemplate, saveStore, updateDoc, deleteDoc } from "./lib/storage";
+import { loadStore, newDocFromTemplate, saveStore, updateDoc, deleteDoc, importIncomingDoc } from "./lib/storage";
 import { templateById } from "./lib/templates";
 import { withDevDoc, stripDevDoc } from "./lib/devDoc";
 import { HomePage } from "./components/HomePage";
@@ -12,8 +16,8 @@ import { Toolbar } from "./components/Toolbar";
 import { Canvas } from "./components/Canvas";
 import { Rail } from "./components/Rail";
 import { PrintPreview } from "./components/PrintPreview";
-
-type Route = "home" | "editor" | "print";
+import { useRoute, navigate, replace } from "./lib/router";
+import { decodeDocPayload } from "./lib/shareFile";
 
 interface CreateArg {
   templateId?: string;
@@ -22,8 +26,8 @@ interface CreateArg {
 
 export default function App() {
   const [store, setStore] = useState<Store>(() => withDevDoc(loadStore()));
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [route, setRoute] = useState<Route>("home");
+  const [route, setRoute] = useRoute();
+  const [printOpen, setPrintOpen] = useState(false);
   const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   const [selectedFoldId, setSelectedFoldId] = useState<string | null>(null);
 
@@ -32,6 +36,32 @@ export default function App() {
     saveStore(stripDevDoc(store));
   }, [store]);
 
+  // Handle a shared document landing at /#doc=<payload>. Decode, persist, and
+  // navigate to /e/<id>. Runs once on mount; the hash is replaced so a second
+  // StrictMode pass (or any later reload) won't re-import.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash.startsWith("#doc=")) return;
+    const payload = hash.slice("#doc=".length);
+    try {
+      const incoming = decodeDocPayload(payload);
+      const current = loadStore();
+      const { store: nextStore, id } = importIncomingDoc(current, incoming);
+      setStore(withDevDoc(nextStore));
+      replace(setRoute, { kind: "editor", id });
+    } catch (e) {
+      // Bad payload — drop the hash and fall through to wherever the path points.
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Close the print overlay if the user navigates away (back/forward).
+  useEffect(() => {
+    if (route.kind !== "editor") setPrintOpen(false);
+  }, [route]);
+
+  const activeId = route.kind === "editor" ? route.id : null;
   const project = activeId ? store.documents[activeId] : null;
 
   const update = (patch: Partial<Doc>) => {
@@ -58,13 +88,11 @@ export default function App() {
 
   const openDoc = (id: string) => {
     setActiveEditor(null);
-    setActiveId(id);
-    setRoute("editor");
+    navigate(setRoute, { kind: "editor", id });
   };
   const goHome = () => {
     setActiveEditor(null);
-    setActiveId(null);
-    setRoute("home");
+    navigate(setRoute, { kind: "home" });
   };
 
   const createDocAndOpen = ({ templateId, starter }: CreateArg) => {
@@ -88,8 +116,7 @@ export default function App() {
       documents: { ...s.documents, [tmpDoc.id]: tmpDoc },
       order: [tmpDoc.id, ...s.order],
     }));
-    setActiveId(tmpDoc.id);
-    setRoute("editor");
+    navigate(setRoute, { kind: "editor", id: tmpDoc.id });
   };
 
   const handleDelete = (id: string) => {
@@ -104,18 +131,18 @@ export default function App() {
   };
 
   // ===== render =====
-  if (route === "home" || !project) {
+  if (route.kind === "home" || !project) {
     return <HomePage store={store} onOpen={openDoc} onCreate={createDocAndOpen} onDelete={handleDelete} />;
   }
-  if (route === "print") {
-    return <PrintPreview project={project} onClose={() => setRoute("editor")} />;
+  if (printOpen) {
+    return <PrintPreview project={project} onClose={() => setPrintOpen(false)} />;
   }
   return (
     <div className="app">
       <TopBar
         title={project.title}
         onTitle={(t) => update({ title: t })}
-        onPrint={() => setRoute("print")}
+        onPrint={() => setPrintOpen(true)}
         onHome={goHome}
       />
       <Toolbar editor={activeEditor} />
