@@ -440,26 +440,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   font-family: var(--mono);
   line-height: 1;
 }
-.overflow-legend {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: rgba(180, 20, 20, 0.9);
-  background: #fff;
-  border: 1px solid rgba(180, 20, 20, 0.4);
-  border-radius: 4px;
-  padding: 5px 10px;
-}
-.overflow-legend .swatch {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  background: rgba(220, 38, 38, 0.18);
-  border-top: 1px dotted rgba(180, 20, 20, 0.75);
-}
-
 /* Editable content surface.
    text-align is pinned so the read-only render looks the same in any container.
    Without this, the home thumbnail (whose ancestor is a <button>) inherits
@@ -756,11 +736,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   padding: 24px;
   overflow: auto;
   display: flex; align-items: center; justify-content: center;
-}
-.print-stage-inner {
-  display: flex; flex-direction: column;
-  align-items: center;
-  gap: 12px;
 }
 .sheets-row {
   display: flex; gap: 24px;
@@ -1141,11 +1116,80 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
   margin-top: 2px;
 }
 
+/* ---------- Zoom control (floating, bottom-right of editor) ---------- */
+.zoom-control {
+  position: fixed;
+  bottom: 18px;
+  right: 18px;
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--shadow-2);
+  padding: 3px;
+}
+.zc-btn {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  color: var(--ink-2);
+  display: grid; place-items: center;
+}
+.zc-btn:hover { background: var(--hover); color: var(--ink); }
+.zc-trigger {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 15px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  min-width: 60px;
+  text-align: center;
+}
+.zc-trigger:hover, .zc-trigger.is-open { background: var(--hover); color: var(--ink); }
+.zc-popup {
+  position: absolute;
+  bottom: 100%; right: 0;
+  margin-bottom: 8px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+  padding: 4px;
+  min-width: 160px;
+  display: flex; flex-direction: column;
+}
+.zc-popup button {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  text-align: left;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--ink-2);
+  width: 100%;
+}
+.zc-popup button:hover { background: var(--hover); color: var(--ink); }
+.zc-popup button.is-active { background: var(--active); color: var(--accent); }
+.zc-popup .zc-hint {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-4);
+}
+.zc-popup button.is-active .zc-hint { color: var(--accent); }
+.zc-popup hr {
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  margin: 4px 0;
+}
+
 /* ---------- @media print ---------- */
 /* Each sheet prints as exactly one Letter page. Nothing else prints, and the
    sheet is clipped to 8.5x11in so content can never spill onto extra pages. */
 @page { size: letter; margin: 0; }
 @media print {
+  .zoom-control { display: none !important; }
   html, body {
     background: #fff !important;
     margin: 0 !important;

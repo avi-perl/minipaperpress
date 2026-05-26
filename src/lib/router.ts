@@ -2,6 +2,9 @@
 //   /        → home
 //   /e/<id>  → editor for that document
 //
+// On GitHub Pages the app is served from a sub-path (e.g. /minipaperpress/),
+// so we strip Vite's BASE_URL before matching and prepend it when navigating.
+//
 // Print preview stays as an in-page sub-state of the editor.
 
 import { useEffect, useState } from "react";
@@ -10,8 +13,17 @@ export type Route =
   | { kind: "home" }
   | { kind: "editor"; id: string };
 
+// "/minipaperpress/" -> "/minipaperpress"; "/" -> ""
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+function relativePath(): string {
+  const p = window.location.pathname;
+  if (BASE && p.startsWith(BASE)) return p.slice(BASE.length) || "/";
+  return p || "/";
+}
+
 export function parseLocation(): Route {
-  const m = window.location.pathname.match(/^\/e\/([^/?#]+)\/?$/);
+  const m = relativePath().match(/^\/e\/([^/?#]+)\/?$/);
   if (m) return { kind: "editor", id: decodeURIComponent(m[1]) };
   return { kind: "home" };
 }
@@ -27,8 +39,8 @@ export function useRoute(): [Route, (next: Route) => void] {
 }
 
 export function pathFor(route: Route): string {
-  if (route.kind === "editor") return `/e/${encodeURIComponent(route.id)}`;
-  return "/";
+  const rel = route.kind === "editor" ? `/e/${encodeURIComponent(route.id)}` : "/";
+  return BASE + rel;
 }
 
 export function navigate(setRoute: (r: Route) => void, next: Route): void {

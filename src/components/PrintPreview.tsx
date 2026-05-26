@@ -313,13 +313,12 @@ interface SheetColProps {
   html: string; // normalized card HTML for this side
   layout: Layout;
   ppi: number;
-  cardH: number; // effective card height in inches (grows to fit content)
   flipEdge: FlipEdge;
   showCutBorder: boolean;
   showFoldArrows: boolean;
 }
 
-function SheetCol({ label, side, project, html, layout, ppi, cardH, flipEdge, showCutBorder, showFoldArrows }: SheetColProps) {
+function SheetCol({ label, side, project, html, layout, ppi, flipEdge, showCutBorder, showFoldArrows }: SheetColProps) {
   const subLabel =
     side === "back"
       ? `Back · mirrored (${flipEdge === "long" ? "long-edge" : "short-edge"} flip)`
@@ -327,7 +326,7 @@ function SheetCol({ label, side, project, html, layout, ppi, cardH, flipEdge, sh
   return (
     <div className="sheet-col">
       <div className="sheet-label">{subLabel}</div>
-      <Sheet side={side} project={project} html={html} layout={layout} ppi={ppi} cardH={cardH} flipEdge={flipEdge} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
+      <Sheet side={side} project={project} html={html} layout={layout} ppi={ppi} flipEdge={flipEdge} showCutBorder={showCutBorder} showFoldArrows={showFoldArrows} />
     </div>
   );
 }
@@ -338,13 +337,12 @@ interface SheetProps {
   html: string; // normalized card HTML for this side
   layout: Layout;
   ppi: number;
-  cardH: number; // effective card height in inches (grows to fit content)
   flipEdge: FlipEdge;
   showCutBorder: boolean;
   showFoldArrows: boolean;
 }
 
-function Sheet({ side, project, html, layout, ppi, cardH, flipEdge, showCutBorder, showFoldArrows }: SheetProps) {
+function Sheet({ side, project, html, layout, ppi, flipEdge, showCutBorder, showFoldArrows }: SheetProps) {
   const { pageW, pageH, folds } = project;
 
   if (layout.count === 0) {
@@ -384,7 +382,6 @@ function Sheet({ side, project, html, layout, ppi, cardH, flipEdge, showCutBorde
           hIn={effectiveH}
           pageW={pageW}
           pageH={pageH}
-          cardH={cardH}
           folds={folds}
           html={html}
           showCutBorder={showCutBorder}
@@ -422,7 +419,6 @@ interface SheetCellProps {
   hIn: number;
   pageW: number;
   pageH: number; // chosen page height in inches (the print boundary)
-  cardH: number; // effective card height in inches (grows to fit content)
   folds: Fold[];
   html: string;
   showCutBorder: boolean;
@@ -430,7 +426,7 @@ interface SheetCellProps {
   neighbors: Neighbors;
 }
 
-function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, cardH, folds, html, showCutBorder, showFoldArrows, neighbors }: SheetCellProps) {
+function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, folds, html, showCutBorder, showFoldArrows, neighbors }: SheetCellProps) {
   // All measurements stay in inches; converted to display px via `--ppi`.
   const px = (inches: number) => `calc(${inches} * var(--ppi) * 1px)`;
 
@@ -446,10 +442,12 @@ function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, cardH, folds, ht
   };
 
   // Card rendered at NATURAL size (96 CSS px per inch) and scaled by transform
-  // to fit the current --ppi. This makes editor preview and actual print pixel-identical.
+  // to fit the current --ppi. The card is exactly pageW × pageH — content past
+  // that boundary is clipped by .editable's overflow:hidden, matching what the
+  // printer will produce. The editor's warning bar tells the user about it.
   const NATURAL = 96;
   const cardNatW = pageW * NATURAL;
-  const cardNatH = cardH * NATURAL;
+  const cardNatH = pageH * NATURAL;
   const SCALE = "var(--ppi-scale)";
   // Anchor card top-left to cell top-left, then scale (and optionally rotate) from there.
   const cardFrame: React.CSSProperties = {
@@ -469,15 +467,9 @@ function SheetCell({ rotated, xIn, yIn, wIn, hIn, pageW, pageH, cardH, folds, ht
     <div style={cellStyle}>
       <div style={cardFrame}>
         <div className="editable card-readonly" dangerouslySetInnerHTML={{ __html: html || "" }} />
-        {cardH > pageH && (
-          <div
-            className="overflow-marker no-print"
-            style={{ top: pageH * NATURAL, height: (cardH - pageH) * NATURAL }}
-          />
-        )}
         {showFoldArrows &&
           folds.map((f) => (
-            <FoldArrowPair key={"a-" + f.id} fold={f} cardW={pageW} cardH={cardH} natural={NATURAL} rotated={rotated} neighbors={neighbors} />
+            <FoldArrowPair key={"a-" + f.id} fold={f} cardW={pageW} cardH={pageH} natural={NATURAL} rotated={rotated} neighbors={neighbors} />
           ))}
       </div>
     </div>

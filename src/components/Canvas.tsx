@@ -169,6 +169,92 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
           )}
         </div>
       </div>
+      <ZoomControl
+        mode={zoomMode}
+        ppi={ppi}
+        onMode={setZoomMode}
+        onZoom={zoomTo}
+        onStep={stepZoom}
+      />
+    </div>
+  );
+}
+
+interface ZoomControlProps {
+  mode: ZoomMode;
+  ppi: number;
+  onMode: (m: ZoomMode) => void;
+  onZoom: (ppi: number) => void;
+  onStep: (factor: number) => void;
+}
+
+function ZoomControl({ mode, ppi, onMode, onZoom, onStep }: ZoomControlProps) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if ((e.target as Element).closest(".zoom-control")) return;
+      setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const label =
+    mode === "fit" ? "Fit" :
+    mode === "fill" ? "Fill" :
+    `${Math.round((ppi / 96) * 100)}%`;
+
+  return (
+    <div className="zoom-control">
+      <button className="zc-btn" onClick={() => onStep(0.9)} title="Zoom out (Ctrl+−)" aria-label="Zoom out">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /></svg>
+      </button>
+      <button
+        className={`zc-trigger ${open ? "is-open" : ""}`}
+        onClick={() => setOpen((o) => !o)}
+        title="Zoom"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        {label}
+      </button>
+      <button className="zc-btn" onClick={() => onStep(1.1)} title="Zoom in (Ctrl+=)" aria-label="Zoom in">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /><line x1="12" y1="6" x2="12" y2="18" /></svg>
+      </button>
+      {open && (
+        <div className="zc-popup" role="menu">
+          <button
+            role="menuitem"
+            className={mode === "fit" ? "is-active" : ""}
+            onClick={() => { onMode("fit"); setOpen(false); }}
+          >
+            <span>Fit</span><span className="zc-hint">Ctrl+0</span>
+          </button>
+          <button
+            role="menuitem"
+            className={mode === "fill" ? "is-active" : ""}
+            onClick={() => { onMode("fill"); setOpen(false); }}
+          >
+            <span>Fill width</span>
+          </button>
+          <hr />
+          {ZOOM_STEPS.map((s) => {
+            const target = s * 96;
+            const isActive = mode === "zoom" && Math.abs(ppi - target) < 0.5;
+            return (
+              <button
+                key={s}
+                role="menuitem"
+                className={isActive ? "is-active" : ""}
+                onClick={() => { onZoom(target); setOpen(false); }}
+              >
+                <span>{Math.round(s * 100)}%</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
