@@ -12,6 +12,7 @@ client-side; documents live in the browser's `localStorage`.
 
 - **React 18** + **TypeScript**
 - **Vite** for dev server and build
+- **TipTap** (ProseMirror) for the rich-text editor
 - No backend — state persists to `localStorage`
 
 ## Getting started
@@ -50,11 +51,13 @@ src/
     types.ts            Domain types (Doc, Store, Template, Fold, Layout…)
     templates.ts        Page templates, unit conversion, sheet-layout math, starters
     storage.ts          localStorage-backed multi-document store
+    editorExtensions.ts TipTap extension configuration for the editor
+    fontSize.ts         Custom TipTap font-size mark
   components/
     icons.tsx           Inline stroke icons
-    Editable.tsx        contentEditable WYSIWYG surface
+    Editable.tsx        TipTap (ProseMirror) editor surface
     TopBar.tsx          Editor top bar (title, Share & Print)
-    Toolbar.tsx         Formatting toolbar + color picker
+    Toolbar.tsx         Rich formatting toolbar (expandable rows)
     Canvas.tsx          Front/back pages with draggable fold guides
     Rail.tsx            Dimensions, fold list, template picker
     HomePage.tsx        Document gallery + starter templates
