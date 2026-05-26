@@ -57,11 +57,14 @@ function makeDevDoc(): Doc {
     title: "Dev test document",
     createdAt: now,
     updatedAt: now,
-    templateId: "custom",
-    pageW: 8.5,
-    pageH: 11,
+    templateId: "biz3",
+    pageW: 3.5,
+    pageH: 6,
     unit: "in",
-    folds: [{ id: "dev-fold-h", axis: "h", position: 5.5 }],
+    folds: [
+      { id: "dev-fold-1", axis: "h", position: 2 },
+      { id: "dev-fold-2", axis: "h", position: 4 },
+    ],
     frontHtml: FRONT_HTML,
     backHtml: BACK_HTML,
   };
