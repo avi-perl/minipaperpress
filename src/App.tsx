@@ -95,6 +95,13 @@ export default function App() {
     setStore((s) => deleteDoc(s, id));
   };
 
+  // Bind the toolbar to an editor as soon as one is created (defaults to the
+  // front page) so the toolbar is live on arrival. Focusing a page switches it.
+  // Replace any stale/destroyed reference (e.g. after StrictMode remounts).
+  const registerEditor = (editor: Editor) => {
+    setActiveEditor((prev) => (prev && !prev.isDestroyed ? prev : editor));
+  };
+
   // ===== render =====
   if (route === "home" || !project) {
     return <HomePage store={store} onOpen={openDoc} onCreate={createDocAndOpen} onDelete={handleDelete} />;
@@ -117,6 +124,7 @@ export default function App() {
           project={project}
           update={update}
           onFocusEditor={setActiveEditor}
+          onInitEditor={registerEditor}
           selectedFoldId={selectedFoldId}
           onSelectFold={setSelectedFoldId}
           onMoveFold={moveFold}

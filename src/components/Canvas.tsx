@@ -9,12 +9,13 @@ interface CanvasProps {
   project: Doc;
   update: (patch: Partial<Doc>) => void;
   onFocusEditor: (editor: Editor) => void;
+  onInitEditor: (editor: Editor) => void;
   selectedFoldId: string | null;
   onSelectFold: (id: string | null) => void;
   onMoveFold: (foldId: string, newPos: number) => void;
 }
 
-export function Canvas({ project, update, onFocusEditor, selectedFoldId, onSelectFold, onMoveFold }: CanvasProps) {
+export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedFoldId, onSelectFold, onMoveFold }: CanvasProps) {
   const { pageW, pageH, folds, frontHtml, backHtml, unit } = project;
 
   // The on-screen scale (pixels per inch). Larger pages get scaled down to fit.
@@ -54,6 +55,7 @@ export function Canvas({ project, update, onFocusEditor, selectedFoldId, onSelec
               html={frontHtml}
               onChangeHtml={(h) => update({ frontHtml: h })}
               onFocusEditor={onFocusEditor}
+              onInitEditor={onInitEditor}
               placeholder="Click to design the front…"
               selectedFoldId={selectedFoldId}
               onSelectFold={onSelectFold}
@@ -72,6 +74,7 @@ export function Canvas({ project, update, onFocusEditor, selectedFoldId, onSelec
               html={backHtml}
               onChangeHtml={(h) => update({ backHtml: h })}
               onFocusEditor={onFocusEditor}
+              onInitEditor={onInitEditor}
               placeholder="Click to design the back…"
               selectedFoldId={selectedFoldId}
               onSelectFold={onSelectFold}
@@ -104,6 +107,7 @@ interface PageProps {
   html: string;
   onChangeHtml: (html: string) => void;
   onFocusEditor: (editor: Editor) => void;
+  onInitEditor: (editor: Editor) => void;
   unit: Unit;
   placeholder?: string;
   selectedFoldId: string | null;
@@ -120,6 +124,7 @@ function Page({
   html,
   onChangeHtml,
   onFocusEditor,
+  onInitEditor,
   unit,
   placeholder,
   selectedFoldId,
@@ -177,6 +182,7 @@ function Page({
             html={html}
             onChange={onChangeHtml}
             onFocusEditor={onFocusEditor}
+            onInitEditor={onInitEditor}
             placeholder={placeholder || "Click to start designing this side…"}
           />
         </div>

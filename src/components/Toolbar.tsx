@@ -1,5 +1,5 @@
 // Formatting toolbar — drives the focused TipTap editor.
-// One always-visible row of basics; a "More" toggle reveals additional rows.
+// A dense always-visible row of common tools; a "More" toggle reveals the rest.
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import { Icon } from "./icons";
@@ -13,7 +13,7 @@ interface ToolbarProps {
 function useEditorRev(editor: Editor | null) {
   const [, setRev] = useState(0);
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const update = () => setRev((r) => r + 1);
     editor.on("transaction", update);
     editor.on("selectionUpdate", update);
@@ -52,8 +52,10 @@ const HIGHLIGHT_COLORS = [
   "#e6c9a8", "#e8eaed", "#ccff90", "#fdd663",
 ];
 
-export function Toolbar({ editor }: ToolbarProps) {
-  useEditorRev(editor);
+export function Toolbar({ editor: rawEditor }: ToolbarProps) {
+  useEditorRev(rawEditor);
+  // Never operate on a destroyed editor (can happen during dev StrictMode remounts).
+  const editor = rawEditor && !rawEditor.isDestroyed ? rawEditor : null;
   const [expanded, setExpanded] = useState(false);
 
   const disabled = !editor;
@@ -94,7 +96,7 @@ export function Toolbar({ editor }: ToolbarProps) {
 
   return (
     <div className="toolbar">
-      {/* ===== Row 1 — basics ===== */}
+      {/* ===== Row 1 — the everyday tools ===== */}
       <div className="toolbar-row">
         <div className="tb-group">
           <button className="tb-btn" title="Undo (⌘Z)" disabled={disabled || !editor!.can().undo()} onMouseDown={(e) => e.preventDefault()} onClick={() => chain().undo().run()}><Icon.Undo /></button>
@@ -111,14 +113,59 @@ export function Toolbar({ editor }: ToolbarProps) {
         </div>
         <div className="tb-sep" />
         <div className="tb-group">
+          <select className="tb-select" style={{ width: 112 }} value={currentFontFamily} disabled={disabled} onChange={(e) => setFontFamily(e.target.value)}>
+            {FONT_FAMILIES.map((f) => (
+              <option key={f.label} value={f.value}>{f.label}</option>
+            ))}
+          </select>
+          <select className="tb-select" style={{ width: 62 }} value={currentFontSizeNum} disabled={disabled} onChange={(e) => setFontSize(e.target.value)}>
+            <option value="">Auto</option>
+            {FONT_SIZES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+        <div className="tb-sep" />
+        <div className="tb-group">
           <TbBtn editor={editor} title="Bold (⌘B)" active={editor?.isActive("bold")} onClick={() => chain().toggleBold().run()}><Icon.Bold /></TbBtn>
           <TbBtn editor={editor} title="Italic (⌘I)" active={editor?.isActive("italic")} onClick={() => chain().toggleItalic().run()}><Icon.Italic /></TbBtn>
           <TbBtn editor={editor} title="Underline (⌘U)" active={editor?.isActive("underline")} onClick={() => chain().toggleUnderline().run()}><Icon.Underline /></TbBtn>
+          <TbBtn editor={editor} title="Strikethrough" active={editor?.isActive("strike")} onClick={() => chain().toggleStrike().run()}><Icon.Strike /></TbBtn>
+        </div>
+        <div className="tb-sep" />
+        <div className="tb-group">
+          <PaletteButton
+            editor={editor}
+            title="Text color"
+            colors={TEXT_COLORS}
+            glyph="A"
+            current={(editor?.getAttributes("textStyle").color as string) || "#202124"}
+            onPick={(c) => chain().setColor(c).run()}
+            onClear={() => chain().unsetColor().run()}
+          />
+          <PaletteButton
+            editor={editor}
+            title="Highlight"
+            colors={HIGHLIGHT_COLORS}
+            icon={<Icon.Highlight />}
+            active={editor?.isActive("highlight")}
+            current={(editor?.getAttributes("highlight").color as string) || "#fff475"}
+            onPick={(c) => chain().toggleHighlight({ color: c }).run()}
+            onClear={() => chain().unsetHighlight().run()}
+          />
+        </div>
+        <div className="tb-sep" />
+        <div className="tb-group">
+          <TbBtn editor={editor} title="Align left" active={editor?.isActive({ textAlign: "left" })} onClick={() => chain().setTextAlign("left").run()}><Icon.AlignLeft /></TbBtn>
+          <TbBtn editor={editor} title="Align center" active={editor?.isActive({ textAlign: "center" })} onClick={() => chain().setTextAlign("center").run()}><Icon.AlignCenter /></TbBtn>
+          <TbBtn editor={editor} title="Align right" active={editor?.isActive({ textAlign: "right" })} onClick={() => chain().setTextAlign("right").run()}><Icon.AlignRight /></TbBtn>
+          <TbBtn editor={editor} title="Justify" active={editor?.isActive({ textAlign: "justify" })} onClick={() => chain().setTextAlign("justify").run()}><Icon.AlignJustify /></TbBtn>
         </div>
         <div className="tb-sep" />
         <div className="tb-group">
           <TbBtn editor={editor} title="Bulleted list" active={editor?.isActive("bulletList")} onClick={() => chain().toggleBulletList().run()}><Icon.Bullets /></TbBtn>
           <TbBtn editor={editor} title="Numbered list" active={editor?.isActive("orderedList")} onClick={() => chain().toggleOrderedList().run()}><Icon.Numbered /></TbBtn>
+          <TbBtn editor={editor} title="Task list" active={editor?.isActive("taskList")} onClick={() => chain().toggleTaskList().run()}><Icon.Tasks /></TbBtn>
         </div>
         <div className="tb-sep" />
         <div className="tb-group">
@@ -139,96 +186,39 @@ export function Toolbar({ editor }: ToolbarProps) {
       </div>
 
       {expanded && (
-        <>
-          {/* ===== Row 2 — type & color ===== */}
-          <div className="toolbar-row">
-            <div className="tb-group">
-              <select className="tb-select" style={{ width: 116 }} value={currentFontFamily} disabled={disabled} onChange={(e) => setFontFamily(e.target.value)}>
-                {FONT_FAMILIES.map((f) => (
-                  <option key={f.label} value={f.value}>{f.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="tb-sep" />
-            <div className="tb-group">
-              <select className="tb-select" style={{ width: 64 }} value={currentFontSizeNum} disabled={disabled} onChange={(e) => setFontSize(e.target.value)}>
-                <option value="">Auto</option>
-                {FONT_SIZES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-            <div className="tb-sep" />
-            <div className="tb-group">
-              <PaletteButton
-                editor={editor}
-                title="Text color"
-                colors={TEXT_COLORS}
-                glyph="A"
-                current={(editor?.getAttributes("textStyle").color as string) || "#202124"}
-                onPick={(c) => chain().setColor(c).run()}
-                onClear={() => chain().unsetColor().run()}
-              />
-              <PaletteButton
-                editor={editor}
-                title="Highlight"
-                colors={HIGHLIGHT_COLORS}
-                icon={<Icon.Highlight />}
-                active={editor?.isActive("highlight")}
-                current={(editor?.getAttributes("highlight").color as string) || "#fff475"}
-                onPick={(c) => chain().toggleHighlight({ color: c }).run()}
-                onClear={() => chain().unsetHighlight().run()}
-              />
-            </div>
-            <div className="tb-sep" />
-            <div className="tb-group">
-              <TbBtn editor={editor} title="Strikethrough" active={editor?.isActive("strike")} onClick={() => chain().toggleStrike().run()}><Icon.Strike /></TbBtn>
-              <TbBtn editor={editor} title="Inline code" active={editor?.isActive("code")} onClick={() => chain().toggleCode().run()}><Icon.Code /></TbBtn>
-              <TbBtn editor={editor} title="Superscript" active={editor?.isActive("superscript")} onClick={() => chain().toggleSuperscript().run()}><Icon.Superscript /></TbBtn>
-              <TbBtn editor={editor} title="Subscript" active={editor?.isActive("subscript")} onClick={() => chain().toggleSubscript().run()}><Icon.Subscript /></TbBtn>
-            </div>
-            <div className="tb-sep" />
-            <div className="tb-group">
-              <TbBtn editor={editor} title="Clear formatting" onClick={() => chain().unsetAllMarks().clearNodes().run()}><Icon.ClearFormat /></TbBtn>
-            </div>
+        <div className="toolbar-row">
+          <div className="tb-group">
+            <TbBtn editor={editor} title="Inline code" active={editor?.isActive("code")} onClick={() => chain().toggleCode().run()}><Icon.Code /></TbBtn>
+            <TbBtn editor={editor} title="Superscript" active={editor?.isActive("superscript")} onClick={() => chain().toggleSuperscript().run()}><Icon.Superscript /></TbBtn>
+            <TbBtn editor={editor} title="Subscript" active={editor?.isActive("subscript")} onClick={() => chain().toggleSubscript().run()}><Icon.Subscript /></TbBtn>
+            <TbBtn editor={editor} title="Clear formatting" onClick={() => chain().unsetAllMarks().clearNodes().run()}><Icon.ClearFormat /></TbBtn>
+          </div>
+          <div className="tb-sep" />
+          <div className="tb-group">
+            <TbBtn editor={editor} title="Quote" active={editor?.isActive("blockquote")} onClick={() => chain().toggleBlockquote().run()}><Icon.Quote /></TbBtn>
+            <TbBtn editor={editor} title="Code block" active={editor?.isActive("codeBlock")} onClick={() => chain().toggleCodeBlock().run()}><Icon.CodeBlock /></TbBtn>
+            <TbBtn editor={editor} title="Horizontal line" onClick={() => chain().setHorizontalRule().run()}><Icon.Divider /></TbBtn>
+          </div>
+          <div className="tb-sep" />
+          <div className="tb-group">
+            <TbBtn editor={editor} title="Insert image" onClick={() => insertImage(editor)}><Icon.Image /></TbBtn>
+            <TbBtn editor={editor} title="Insert table" onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><Icon.Table /></TbBtn>
           </div>
 
-          {/* ===== Row 3 — blocks, alignment, inserts ===== */}
-          <div className="toolbar-row">
-            <div className="tb-group">
-              <TbBtn editor={editor} title="Align left" active={editor?.isActive({ textAlign: "left" })} onClick={() => chain().setTextAlign("left").run()}><Icon.AlignLeft /></TbBtn>
-              <TbBtn editor={editor} title="Align center" active={editor?.isActive({ textAlign: "center" })} onClick={() => chain().setTextAlign("center").run()}><Icon.AlignCenter /></TbBtn>
-              <TbBtn editor={editor} title="Align right" active={editor?.isActive({ textAlign: "right" })} onClick={() => chain().setTextAlign("right").run()}><Icon.AlignRight /></TbBtn>
-              <TbBtn editor={editor} title="Justify" active={editor?.isActive({ textAlign: "justify" })} onClick={() => chain().setTextAlign("justify").run()}><Icon.AlignJustify /></TbBtn>
-            </div>
-            <div className="tb-sep" />
-            <div className="tb-group">
-              <TbBtn editor={editor} title="Task list" active={editor?.isActive("taskList")} onClick={() => chain().toggleTaskList().run()}><Icon.Tasks /></TbBtn>
-              <TbBtn editor={editor} title="Quote" active={editor?.isActive("blockquote")} onClick={() => chain().toggleBlockquote().run()}><Icon.Quote /></TbBtn>
-              <TbBtn editor={editor} title="Code block" active={editor?.isActive("codeBlock")} onClick={() => chain().toggleCodeBlock().run()}><Icon.CodeBlock /></TbBtn>
-              <TbBtn editor={editor} title="Horizontal line" onClick={() => chain().setHorizontalRule().run()}><Icon.Divider /></TbBtn>
-            </div>
-            <div className="tb-sep" />
-            <div className="tb-group">
-              <TbBtn editor={editor} title="Insert image" onClick={() => insertImage(editor)}><Icon.Image /></TbBtn>
-              <TbBtn editor={editor} title="Insert table" onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}><Icon.Table /></TbBtn>
-            </div>
-
-            {inTable && (
-              <>
-                <div className="tb-sep" />
-                <div className="tb-group tb-table-tools">
-                  <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().addColumnAfter().run()}>+ Col</button>
-                  <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().addRowAfter().run()}>+ Row</button>
-                  <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().deleteColumn().run()}>− Col</button>
-                  <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().deleteRow().run()}>− Row</button>
-                  <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().toggleHeaderRow().run()}>Header</button>
-                  <button className="tb-text-btn danger" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().deleteTable().run()}>Delete table</button>
-                </div>
-              </>
-            )}
-          </div>
-        </>
+          {inTable && (
+            <>
+              <div className="tb-sep" />
+              <div className="tb-group tb-table-tools">
+                <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().addColumnAfter().run()}>+ Col</button>
+                <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().addRowAfter().run()}>+ Row</button>
+                <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().deleteColumn().run()}>− Col</button>
+                <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().deleteRow().run()}>− Row</button>
+                <button className="tb-text-btn" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().toggleHeaderRow().run()}>Header</button>
+                <button className="tb-text-btn danger" onMouseDown={(e) => e.preventDefault()} onClick={() => chain().deleteTable().run()}>Delete table</button>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

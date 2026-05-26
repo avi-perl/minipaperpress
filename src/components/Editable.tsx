@@ -11,9 +11,10 @@ interface EditableProps {
   onChange: (html: string) => void;
   placeholder?: string;
   onFocusEditor?: (editor: Editor) => void;
+  onInitEditor?: (editor: Editor) => void;
 }
 
-export function Editable({ html, onChange, placeholder, onFocusEditor }: EditableProps) {
+export function Editable({ html, onChange, placeholder, onFocusEditor, onInitEditor }: EditableProps) {
   const editor = useEditor({
     extensions: buildEditorExtensions(placeholder || "Start typing…"),
     content: html || "",
@@ -21,6 +22,7 @@ export function Editable({ html, onChange, placeholder, onFocusEditor }: Editabl
       // Reuse the existing .editable styling on the contentEditable element.
       attributes: { class: "editable" },
     },
+    onCreate: ({ editor }) => onInitEditor?.(editor),
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     onFocus: ({ editor }) => onFocusEditor?.(editor),
   });
