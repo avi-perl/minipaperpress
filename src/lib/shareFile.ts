@@ -1,7 +1,8 @@
 // Sharing format: a tiny HTML file that embeds the document JSON (base64url)
-// and the origin of the site that generated it. Opening the file in a browser
-// redirects to `<origin>/#doc=<base64url>`, where the app decodes it, writes it
-// to local storage, and replaces the URL with `/e/<id>`.
+// and the site URL that generated it (origin + any sub-path, e.g.
+// https://user.github.io/minipaperpress on GitHub Pages). Opening the file
+// redirects to `<siteUrl>/#doc=<base64url>`, where the app decodes it,
+// writes it to local storage, and replaces the URL with `/e/<id>`.
 
 import type { Doc } from "./types";
 
@@ -43,7 +44,7 @@ export function shareFilename(title: string): string {
   return (base || "document") + ".minipaperpress.html";
 }
 
-export function buildShareHtml(doc: Doc, origin: string): string {
+export function buildShareHtml(doc: Doc, siteUrl: string): string {
   const payload = encodeDocPayload(doc);
   const title = doc.title || "MiniPaperPress document";
   return `<!doctype html>
@@ -61,12 +62,12 @@ export function buildShareHtml(doc: Doc, origin: string): string {
 <p class="small">This file contains a MiniPaperPress document. It opens at <code id="host"></code>.</p>
 <script>
 (function () {
-  var ORIGIN = ${JSON.stringify(origin)};
+  var SITE = ${JSON.stringify(siteUrl)};
   var PAYLOAD = ${JSON.stringify(payload)};
-  var url = ORIGIN + "/#doc=" + PAYLOAD;
+  var url = SITE + "/#doc=" + PAYLOAD;
   var link = document.getElementById("open");
   link.href = url;
-  document.getElementById("host").textContent = ORIGIN;
+  document.getElementById("host").textContent = SITE;
   location.replace(url);
 })();
 </script>

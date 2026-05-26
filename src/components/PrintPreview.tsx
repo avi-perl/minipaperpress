@@ -250,9 +250,11 @@ interface ShareDialogProps {
 }
 
 function ShareDialog({ project, onClose }: ShareDialogProps) {
-  const origin = window.location.origin;
+  // Site URL = origin + Vite base (e.g. https://user.github.io/minipaperpress on Pages,
+  // https://localhost:5173 in dev). Dropping the base sends recipients to the wrong path.
+  const siteUrl = window.location.origin + import.meta.env.BASE_URL.replace(/\/$/, "");
   const downloadHtml = () => {
-    const html = buildShareHtml(project, origin);
+    const html = buildShareHtml(project, siteUrl);
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -272,7 +274,7 @@ function ShareDialog({ project, onClose }: ShareDialogProps) {
         </div>
         <div className="share-section">
           <p className="share-p">
-            Download a small HTML file that opens this document in MiniPaperPress at <code>{origin}</code>.
+            Download a small HTML file that opens this document in MiniPaperPress at <code>{siteUrl}</code>.
           </p>
           <button className="btn btn-primary" onClick={downloadHtml}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
