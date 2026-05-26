@@ -3,7 +3,7 @@
 MiniPaperPress is a browser-based tool for laying out documents that fold down into something pocket-sized such as a
 credit-card-sized packet that unfolds into a long easy-to-carry notepad.
 
-Check it out: {url}
+Check it out: https://avi-perl.github.io/minipaperpress/
 
 ## Features
 
