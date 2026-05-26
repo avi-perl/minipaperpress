@@ -25,11 +25,11 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
   const { pageW, pageH, folds, frontHtml, backHtml, unit } = project;
 
   // The on-screen scale (pixels per inch).
-  //  • fit  — both pages fit fully in view (default; current behavior)
-  //  • fill — both pages fill the available width; user scrolls vertically
-  //  • zoom — explicit scale set by the user (popup / +/- / Ctrl+wheel)
+  //  • fit  — both pages fit fully in view
+  //  • fill — both pages fill the available width; user scrolls vertically (default)
+  //  • zoom — explicit scale set by the user (popup / +/- buttons)
   const containerRef = useRef<HTMLDivElement>(null);
-  const [zoomMode, setZoomMode] = useState<ZoomMode>("fit");
+  const [zoomMode, setZoomMode] = useState<ZoomMode>("fill");
   const [customPpi, setCustomPpi] = useState(96);
   const [autoPpi, setAutoPpi] = useState(96);
   // On phones we force fill-width regardless of the user's chosen mode — the
@@ -43,9 +43,9 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
   }, []);
   const effectiveMode: ZoomMode = isMobile ? "fill" : zoomMode;
   const ppi = effectiveMode === "zoom" ? customPpi : autoPpi;
-  // The hijack handlers and +/- buttons scale from the *current effective*
-  // ppi, so the transition from fit/fill into zoom feels continuous. A ref
-  // avoids re-binding the listeners on every ppi change.
+  // The +/- buttons scale from the *current effective* ppi, so transitioning
+  // from fit/fill into zoom feels continuous. A ref keeps the latest value
+  // accessible to the click handlers without re-binding them.
   const ppiRef = useRef(ppi);
   ppiRef.current = ppi;
 
@@ -78,34 +78,6 @@ export function Canvas({ project, update, onFocusEditor, onInitEditor, selectedF
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, [pageW, pageH, effectiveMode, isMobile]);
-
-  // Hijack browser zoom while the editor is mounted: Ctrl/Cmd + wheel / = / -
-  // scales only the document; Ctrl/Cmd + 0 resets to Fit. Surrounding chrome
-  // (toolbar, rail, topbar) stays at 100%.
-  useEffect(() => {
-    const adjust = (factor: number) => {
-      const next = Math.max(MIN_PPI, Math.min(MAX_PPI, ppiRef.current * factor));
-      setCustomPpi(next);
-      setZoomMode("zoom");
-    };
-    const onWheel = (e: WheelEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      adjust(e.deltaY > 0 ? 0.9 : 1.1);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      if (e.key === "=" || e.key === "+") { e.preventDefault(); adjust(1.1); }
-      else if (e.key === "-") { e.preventDefault(); adjust(0.9); }
-      else if (e.key === "0") { e.preventDefault(); setZoomMode("fit"); }
-    };
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("wheel", onWheel);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, []);
 
   const stepZoom = (factor: number) => {
     const next = Math.max(MIN_PPI, Math.min(MAX_PPI, ppiRef.current * factor));
@@ -220,7 +192,7 @@ function ZoomControl({ mode, ppi, onMode, onZoom, onStep }: ZoomControlProps) {
 
   return (
     <div className="zoom-control">
-      <button className="zc-btn" onClick={() => onStep(0.9)} title="Zoom out (Ctrl+−)" aria-label="Zoom out">
+      <button className="zc-btn" onClick={() => onStep(0.9)} title="Zoom out" aria-label="Zoom out">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /></svg>
       </button>
       <button
@@ -232,24 +204,24 @@ function ZoomControl({ mode, ppi, onMode, onZoom, onStep }: ZoomControlProps) {
       >
         {label}
       </button>
-      <button className="zc-btn" onClick={() => onStep(1.1)} title="Zoom in (Ctrl+=)" aria-label="Zoom in">
+      <button className="zc-btn" onClick={() => onStep(1.1)} title="Zoom in" aria-label="Zoom in">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><line x1="6" y1="12" x2="18" y2="12" /><line x1="12" y1="6" x2="12" y2="18" /></svg>
       </button>
       {open && (
         <div className="zc-popup" role="menu">
           <button
             role="menuitem"
-            className={mode === "fit" ? "is-active" : ""}
-            onClick={() => { onMode("fit"); setOpen(false); }}
-          >
-            <span>Fit</span><span className="zc-hint">Ctrl+0</span>
-          </button>
-          <button
-            role="menuitem"
             className={mode === "fill" ? "is-active" : ""}
             onClick={() => { onMode("fill"); setOpen(false); }}
           >
             <span>Fill width</span>
+          </button>
+          <button
+            role="menuitem"
+            className={mode === "fit" ? "is-active" : ""}
+            onClick={() => { onMode("fit"); setOpen(false); }}
+          >
+            <span>Fit</span>
           </button>
           <hr />
           {ZOOM_STEPS.map((s) => {

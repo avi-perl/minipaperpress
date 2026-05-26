@@ -16,6 +16,17 @@ const BLOCK_TAGS = new Set([
   "DIV", "FIGURE", "FIGCAPTION",
 ]);
 
+// Block tags that ProseMirror's contenteditable renders with a trailing
+// `<br class="ProseMirror-trailingBreak">` decoration when empty, so the block
+// still occupies a full line of height. The static print render is just
+// dangerouslySetInnerHTML with no decoration, so empty blocks would otherwise
+// collapse — making empty `<p></p>` spacers (used heavily as visual gaps
+// between sections) silently disappear in print while still pushing content
+// down in the editor.
+const FILL_EMPTY_TAGS = new Set([
+  "P", "H1", "H2", "H3", "H4", "H5", "H6", "LI",
+]);
+
 export function normalizeCardHtml(html: string): string {
   if (!html || typeof DOMParser === "undefined") return html || "";
 
@@ -23,6 +34,15 @@ export function normalizeCardHtml(html: string): string {
 
   const isBlock = (n: Node | null): boolean =>
     !n || (n.nodeType === Node.ELEMENT_NODE && BLOCK_TAGS.has((n as Element).tagName));
+
+  const isEmptyBlock = (el: Element): boolean => {
+    // An "empty" block has no element children and no non-whitespace text.
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === Node.ELEMENT_NODE) return false;
+      if (child.nodeType === Node.TEXT_NODE && (child.textContent || "") !== "") return false;
+    }
+    return true;
+  };
 
   const walk = (el: Node) => {
     for (const node of Array.from(el.childNodes)) {
@@ -32,9 +52,13 @@ export function normalizeCardHtml(html: string): string {
           node.parentNode?.removeChild(node);
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const tag = (node as Element).tagName;
+        const el = node as Element;
+        const tag = el.tagName;
         // Preformatted content keeps its whitespace verbatim.
         if (tag !== "PRE" && tag !== "CODE") walk(node);
+        if (FILL_EMPTY_TAGS.has(tag) && isEmptyBlock(el)) {
+          el.appendChild(doc.createElement("br"));
+        }
       }
     }
   };

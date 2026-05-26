@@ -1175,12 +1175,6 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 }
 .zc-popup button:hover { background: var(--hover); color: var(--ink); }
 .zc-popup button.is-active { background: var(--active); color: var(--accent); }
-.zc-popup .zc-hint {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-4);
-}
-.zc-popup button.is-active .zc-hint { color: var(--accent); }
 .zc-popup hr {
   border: none;
   border-top: 1px solid var(--border-soft);

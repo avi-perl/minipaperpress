@@ -331,6 +331,72 @@ test.describe("Share & Print", () => {
     expect(printBlocks).toEqual(editorBlocks);
   });
 
+  test("empty paragraph spacers occupy the same height in editor and print", async ({ page }) => {
+    // Empty <p></p> blocks are commonly authored as visual spacers between
+    // sections. ProseMirror gives every empty block a trailing-break
+    // decoration so it renders at full line-height; the static print render
+    // has no such decoration, so an empty <p></p> collapses to ~0px unless
+    // the normalizer fills it. If parity is broken, content that overflows
+    // in the editor will appear to fit in print — a silent WYSIWYG failure.
+    const html =
+      "<h1>Title</h1>" +
+      "<p>First section line.</p>" +
+      "<p></p>" +
+      "<p>Second section line.</p>" +
+      "<p></p>" +
+      "<p></p>" +
+      "<p>Third section line.</p>";
+
+    const doc = buildDoc({
+      id: "pw-empty-spacers",
+      title: "Playwright Empty Spacer Fixture",
+      folds: [],
+      frontHtml: html,
+      backHtml: html,
+    });
+    await page.addInitScript(
+      ([key, value]) => window.localStorage.setItem(key, value),
+      [STORAGE_KEY, JSON.stringify({ documents: { [doc.id]: doc }, order: [doc.id] })] as const,
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: `Open ${doc.title}` }).click();
+
+    // Capture every top-level block's offsetTop — including empty ones, which
+    // the existing spacing test deliberately filters out.
+    const readBlocks = (el: Element) =>
+      [...el.children].map((c) => `${c.tagName}@${(c as HTMLElement).offsetTop}`);
+
+    const editorBlocks = await page
+      .locator(".page-natural")
+      .first()
+      .locator(".editable")
+      .first()
+      .evaluate(readBlocks);
+
+    await page.getByRole("button", { name: "Share & Print" }).click();
+    await expect(page.locator(".sheet").first()).toBeVisible();
+
+    const printBlocks = await page
+      .locator(".sheet")
+      .first()
+      .locator(".card-readonly")
+      .first()
+      .evaluate(readBlocks);
+
+    // Same number of top-level blocks (7), same vertical position for each —
+    // including each empty <p> spacer.
+    expect(editorBlocks).toHaveLength(7);
+    expect(printBlocks).toEqual(editorBlocks);
+
+    // Belt-and-braces: the very last block must sit well below the top —
+    // proving the empty spacers actually contributed real vertical space in
+    // print. The editor lays them out at ~21px (1.5em line-height @ 14px) +
+    // 4px paragraph margin; three spacers therefore push the last block down
+    // by ~70px or more.
+    const lastOffset = Number(printBlocks.at(-1)!.split("@")[1]);
+    expect(lastOffset).toBeGreaterThan(100);
+  });
+
   test("print media hides editor chrome and clips each sheet to 8.5×11in", async ({ page }) => {
     await openPrintPreview(page, buildDoc());
     await page.emulateMedia({ media: "print" });
