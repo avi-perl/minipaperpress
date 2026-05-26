@@ -1,6 +1,7 @@
 // Main app. Routes between Home, Editor, and Print Preview.
 // Storage holds many documents in one keyed store (lib/storage.ts).
 import { useEffect, useState } from "react";
+import type { Editor } from "@tiptap/react";
 import type { Doc, Fold, Starter, Store } from "./lib/types";
 import { loadStore, newDocFromTemplate, saveStore, updateDoc, deleteDoc } from "./lib/storage";
 import { templateById } from "./lib/templates";
@@ -22,21 +23,13 @@ export default function App() {
   const [store, setStore] = useState<Store>(loadStore);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [route, setRoute] = useState<Route>("home");
-  const [activeEditor, setActiveEditor] = useState<HTMLElement | null>(null);
+  const [activeEditor, setActiveEditor] = useState<Editor | null>(null);
   const [selectedFoldId, setSelectedFoldId] = useState<string | null>(null);
-  const [, force] = useState(0);
 
   // Persist store on change
   useEffect(() => {
     saveStore(store);
   }, [store]);
-
-  // Re-render on selection change so toolbar active-state updates
-  useEffect(() => {
-    const handler = () => force((n) => n + 1);
-    document.addEventListener("selectionchange", handler);
-    return () => document.removeEventListener("selectionchange", handler);
-  }, []);
 
   const project = activeId ? store.documents[activeId] : null;
 
@@ -63,10 +56,12 @@ export default function App() {
   }, [selectedFoldId]);
 
   const openDoc = (id: string) => {
+    setActiveEditor(null);
     setActiveId(id);
     setRoute("editor");
   };
   const goHome = () => {
+    setActiveEditor(null);
     setActiveId(null);
     setRoute("home");
   };
@@ -86,6 +81,7 @@ export default function App() {
       const t = templateById(templateId || "");
       factory = () => newDocFromTemplate(t, { title: "Untitled document" });
     }
+    setActiveEditor(null);
     const tmpDoc = factory();
     setStore((s) => ({
       documents: { ...s.documents, [tmpDoc.id]: tmpDoc },
@@ -97,47 +93,6 @@ export default function App() {
 
   const handleDelete = (id: string) => {
     setStore((s) => deleteDoc(s, id));
-  };
-
-  // ===== WYSIWYG actions =====
-  const exec = (cmd: string, value?: string) => {
-    if (!activeEditor) return;
-    activeEditor.focus();
-    document.execCommand(cmd, false, value);
-    const ev = new Event("input", { bubbles: true });
-    activeEditor.dispatchEvent(ev);
-  };
-  const queryActive = (cmd: string) => {
-    try {
-      return document.queryCommandState(cmd);
-    } catch (e) {
-      return false;
-    }
-  };
-  const applyHeading = (tag: string) => {
-    if (!activeEditor) return;
-    activeEditor.focus();
-    document.execCommand("formatBlock", false, tag);
-    activeEditor.dispatchEvent(new Event("input", { bubbles: true }));
-  };
-  const applyFontSize = (px: string) => {
-    if (!activeEditor) return;
-    activeEditor.focus();
-    document.execCommand("styleWithCSS", false, "true");
-    document.execCommand("fontSize", false, "7");
-    const spans = activeEditor.querySelectorAll('font[size="7"], span[style*="font-size"]');
-    spans.forEach((node) => {
-      const el = node as HTMLElement;
-      if (el.tagName === "FONT") {
-        const span = document.createElement("span");
-        span.style.fontSize = px + "px";
-        span.innerHTML = el.innerHTML;
-        el.replaceWith(span);
-      } else {
-        el.style.fontSize = px + "px";
-      }
-    });
-    activeEditor.dispatchEvent(new Event("input", { bubbles: true }));
   };
 
   // ===== render =====
@@ -155,7 +110,7 @@ export default function App() {
         onPrint={() => setRoute("print")}
         onHome={goHome}
       />
-      <Toolbar exec={exec} queryActive={queryActive} applyHeading={applyHeading} applyFontSize={applyFontSize} />
+      <Toolbar editor={activeEditor} />
       <div className="workspace">
         <Rail project={project} update={update} updateFolds={updateFolds} />
         <Canvas

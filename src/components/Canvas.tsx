@@ -1,5 +1,6 @@
 // Editing canvas — front and back pages side by side, with draggable fold guides.
 import { useEffect, useRef, useState } from "react";
+import type { Editor } from "@tiptap/react";
 import type { Doc, Fold, Unit } from "../lib/types";
 import { fmt, round2 } from "../lib/templates";
 import { Editable } from "./Editable";
@@ -7,7 +8,7 @@ import { Editable } from "./Editable";
 interface CanvasProps {
   project: Doc;
   update: (patch: Partial<Doc>) => void;
-  onFocusEditor: (el: HTMLElement) => void;
+  onFocusEditor: (editor: Editor) => void;
   selectedFoldId: string | null;
   onSelectFold: (id: string | null) => void;
   onMoveFold: (foldId: string, newPos: number) => void;
@@ -44,6 +45,7 @@ export function Canvas({ project, update, onFocusEditor, selectedFoldId, onSelec
         <div className="page-stack">
           <div className="page-block">
             <Page
+              key={project.id + "-front"}
               ppi={ppi}
               pageW={pageW}
               pageH={pageH}
@@ -61,6 +63,7 @@ export function Canvas({ project, update, onFocusEditor, selectedFoldId, onSelec
           </div>
           <div className="page-block">
             <Page
+              key={project.id + "-back"}
               ppi={ppi}
               pageW={pageW}
               pageH={pageH}
@@ -100,7 +103,7 @@ interface PageProps {
   folds: Fold[];
   html: string;
   onChangeHtml: (html: string) => void;
-  onFocusEditor: (el: HTMLElement) => void;
+  onFocusEditor: (editor: Editor) => void;
   unit: Unit;
   placeholder?: string;
   selectedFoldId: string | null;

@@ -1,49 +1,39 @@
-// WYSIWYG editor surface — contentEditable wired to the toolbar via document.execCommand.
-import { useCallback, useEffect, useRef } from "react";
+// WYSIWYG editor surface, powered by TipTap (ProseMirror).
+// Each front/back side owns its own editor instance; the focused one is
+// reported up to the app so the shared toolbar can drive it.
+import { useEffect } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import type { Editor } from "@tiptap/react";
+import { buildEditorExtensions } from "../lib/editorExtensions";
 
 interface EditableProps {
   html: string;
   onChange: (html: string) => void;
   placeholder?: string;
-  onFocusEditor?: (el: HTMLElement) => void;
+  onFocusEditor?: (editor: Editor) => void;
 }
 
 export function Editable({ html, onChange, placeholder, onFocusEditor }: EditableProps) {
-  const ref = useRef<HTMLDivElement>(null);
+  const editor = useEditor({
+    extensions: buildEditorExtensions(placeholder || "Start typing…"),
+    content: html || "",
+    editorProps: {
+      // Reuse the existing .editable styling on the contentEditable element.
+      attributes: { class: "editable" },
+    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onFocus: ({ editor }) => onFocusEditor?.(editor),
+  });
 
-  // Sync prop -> DOM whenever the prop differs from what's currently in the editor.
-  // (Compares against the live DOM, so initial content gets written on first mount.)
+  // Sync external content changes into the editor (e.g. loading another document)
+  // without disturbing the caret while the user is actively typing.
   useEffect(() => {
-    if (!ref.current) return;
+    if (!editor) return;
     const next = html || "";
-    if (ref.current.innerHTML !== next) {
-      ref.current.innerHTML = next;
+    if (!editor.isFocused && editor.getHTML() !== next) {
+      editor.commands.setContent(next, false);
     }
-  }, [html]);
+  }, [html, editor]);
 
-  const handleInput = useCallback(() => {
-    if (!ref.current) return;
-    onChange(ref.current.innerHTML);
-  }, [onChange]);
-
-  const handleFocus = useCallback(() => {
-    if (onFocusEditor && ref.current) onFocusEditor(ref.current);
-  }, [onFocusEditor]);
-
-  const isEmpty = !html || html.replace(/<[^>]+>/g, "").trim() === "";
-
-  return (
-    <div
-      ref={ref}
-      className="editable"
-      contentEditable
-      suppressContentEditableWarning
-      spellCheck={false}
-      data-empty={isEmpty}
-      data-placeholder={placeholder || "Start typing…"}
-      onInput={handleInput}
-      onFocus={handleFocus}
-      onBlur={handleInput}
-    />
-  );
+  return <EditorContent editor={editor} className="editable-host" />;
 }
